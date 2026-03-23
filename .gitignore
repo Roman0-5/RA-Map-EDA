@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VSCode
+.vscode/
+
+#macOS
+.DS_STORE
+.DS_Store
+Thumbs.db
+desktop.ini
+# Data downloaded from figshare and created by executed scripts
+*.xlsx
+*.parquet
+*.adat
+datasets/*
+cleaned_datasets/*
+
+#files created during runtime
+reports/*.txt
+reports/*.png
