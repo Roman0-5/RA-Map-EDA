@@ -34,4 +34,3 @@ def load_all_sheets():
         'df_expMatrix': somascan_sheet['expression matrix'],
         'df_sampMatrix': somascan_sheet['sample matrix']
     }
-    
