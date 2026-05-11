@@ -1,6 +1,11 @@
+import pandas as pd
+import numpy as np
+from src.extraction import extract_dtypes
+
 def data_quality_report(df):
     """Function to make a Dataqualityreport with df as Input"""
-    
+    #initializing objects from other function
+    df, only_num, only_str, only_obj = extract_dtypes(df)
     print("Dataquality report")
     print()
     print(f"Rows: {len(df)} | Columns: {len(df.columns)}")
@@ -24,57 +29,50 @@ def data_quality_report(df):
         print("No missing values were found!")
     print()
     
-    # 2. Duplikate
+    # 2. duplicates
     print("How many duplicates?")
     print(f"Duplicates: {df.duplicated().sum()}")
     print()
     
-    # 3. Datentypen-Überblick
-    for dtype in df.dtypes.unique():
-        if str(dtype) == 'object':
-            rows = df.select_dtypes(include=['object', 'str']).columns.tolist()
-        else:
-            rows = df.select_dtypes(include=[dtype]).columns.tolist()
-        print(f"{dtype}: {len(rows)} columns")
-        print(f"{rows[:5]}{'...' if len(rows) > 5 else ''}")
-    print()
+    # 3. dtype overview 
+    for name, subset in [('numeric', only_num), ('string', only_str), ('object', only_obj)]:
+        cols = subset.columns.tolist()
+        print(f"{name}: {len(cols)} columns")
+        print(f"{cols[:5]}{'...' if len(cols) > 5 else ''}")
+        print()
     
     # 4. Numerical Values special cases and distribution
     print("Numerical Values")
-    num_cols = df.select_dtypes(include=[np.number]).columns
-    for col in num_cols:
-        q1 = df[col].quantile(0.25)
-        q3 = df[col].quantile(0.75)
-        iqr = q3 - q1
-        special = ((df[col] < q1 - 1.5 * iqr) | (df[col] > q3 + 1.5 * iqr)).sum()
-        print(f"{col}:")
-        print(f"  Min: {df[col].min()} | Max: {df[col].max()} | "
-              f"Mean: {df[col].mean():.2f} | Special values: {special}")
-    print()
-    
-    # 5. String-Spalten: Konsistenz
-    print("Strings")
-    str_cols = df.select_dtypes(include=['object', 'str']).columns
-    for col in str_cols:
-        unique = df[col].nunique()
-        print(f"{col}:")
-        print(f"Unique Strings: {unique}")
-        
-        # Leerzeichen-Probleme
-        if df[col].dropna().str.startswith(' ').any() or df[col].dropna().str.endswith(' ').any():
-            print(f"Enthält führende/nachfolgende Leerzeichen!")
-        
-        # Groß-/Kleinschreibung inkonsistent?
-        if unique != df[col].str.lower().nunique():
-            print(f"Inkonsistente Groß-/Kleinschreibung!")
-        
-        # Bei wenigen einzigartigen Werten: zeig sie
-        if unique <= 15:
-            print(f"  Werte: {df[col].value_counts().to_dict()}")
+    num_df = df.select_dtypes(include=[np.number])
+    stats = num_df.describe()
+    print(stats)
     print()
 
-os.makedirs('../reports', exist_ok=True)
-with open('../reports/data_quality_report.txt', 'w', encoding='utf-8') as f:
-    with redirect_stdout(f):
-        data_quality_report(df_clinical)
-print("saved to /reports/quality_report.txt")
+    for col in num_df.columns:
+        mean = stats.loc['mean', col]
+        std = stats.loc['std', col]
+
+        lower = mean - (3 * std)
+        upper = mean + (3 * std)
+        outliers = ((num_df[col] < lower) | (num_df[col] > upper)).sum()
+
+        print(f"{col}")
+        print(f" Min: {stats.loc['min', col]:.2f} |"
+              f" Max: {stats.loc['max', col]:.2f} |"
+              f" Mean: {mean:.2f} |"
+              f" Std: {std:.2f} |"
+              f" Outliers: {outliers}")
+    
+    # 5. Consistency of string rows
+    print("Strings")
+    str_df = pd.concat([only_str, only_obj], axis=1)
+
+    # all stats at once
+    summary = str_df.agg([
+        'nunique',
+        'count',
+        lambda x: x.dropna().str.startswith(' ').any() or x.dropna().str.endswith(' ').any(),
+        lambda x: x.nunique() != x.dropna().str.lower().nunique()
+    ])
+    summary.index = ['Unique', 'Count', 'Has_Whitespace', 'Mixed_Case']
+    print(summary.T)  # transposed for readability
