@@ -1,15 +1,32 @@
-def clinical_data_audit(df, name="dataset", missing_threshold=0.4):
-    """
-    Pre-cleaning audit for RA clinical-related tables.
+import pandas as pd
+import numpy as np
 
+def data_audit(
+    df: pd.DataFrame,
+    name: str ="dataset",
+    missing_threshold: float=0.4
+    ) -> dict:
+    """Generic pre-cleaning audit
+
+    Analyzes structure, duplicates, missing values, numeric outliers,
+    and categorical consistency.
+    
     PURPOSE:
     - Understand data quality BEFORE any cleaning or feature engineering
     - Works on individual tables (clinical_scores, steroids, meds)
     - Does NOT assume ML-ready structure
+    
+    Args:
+        df: DataFrame to audit
+        name: Display name for audit header.
+        missing_threshold: Fraction 
+        
+    Returns:
+        Dict with 'high_missing' and 'mid_missing' DataFrames
     """
 
     print(f"\n{'='*70}")
-    print(f"CLINICAL AUDIT: {name.upper()}")
+    print(f"DATA AUDIT: {name.upper()}")
     print(f"{'='*70}\n")
 
     # 1. STRUCTURE
@@ -28,35 +45,44 @@ def clinical_data_audit(df, name="dataset", missing_threshold=0.4):
         "missing_count": missing,
         "missing_pct": missing_pct
     }).sort_values("missing_pct", ascending=False)
+    
     high_missing = missing_report[missing_report["missing_pct"] > missing_threshold]
     mid_missing = missing_report[
         (missing_report["missing_pct"] > 0) &
         (missing_report["missing_pct"] <= missing_threshold)
     ]
-    print(f"\nColumns > {missing_threshold*100:.0f}% missing (likely drop):")
+    
+    print(f"\nColumns > {missing_threshold*100:.0f}% missing:")
     print(high_missing)
-    print("\nModerate missing values (likely impute):")
+    print("\nModerate missing values:")
     print(mid_missing.head(15))
 
     # 4. NUMERIC FEATURES
     print("\n4. NUMERIC FEATURES")
     num_df = df.select_dtypes(include=[np.number])
     print(f"Numeric columns: {num_df.shape[1]}")
+    
     if num_df.shape[1] > 0:
         desc = num_df.describe().T
-        outlier_counts = []
-        for col in num_df.columns:
-            q1 = num_df[col].quantile(0.25)
-            q3 = num_df[col].quantile(0.75)
-            iqr = q3 - q1
-            lower = q1 - 1.5 * iqr
-            upper = q3 + 1.5 * iqr
-
-            outlier_counts.append(((num_df[col] < lower) | (num_df[col] > upper)).sum())
-        desc["outliers_iqr"] = outlier_counts
-        print("\nTop features by outliers:")
-        print(desc.sort_values("outliers_iqr", ascending=False).head(10))
-
+        
+        # IQR
+        q1 = num_df.quantile(0.25)
+        q3 = num_df.quantile(0.75)
+        iqr = q3 - q1
+        outliers_iqr = ((num_df < q1 - 1.5*iqr) | (num_df > q3 + 1.5*iqr)).sum()
+        
+        # 3-sigma (68-95-99.7) rule
+        mean = num_df.mean()
+        std = num_df.std()
+        outliers_3s = ((num_df < mean - 3*std) | (num_df > mean + 3*std)).sum()
+        
+        desc['outliers_iqr'] = outliers_iqr
+        desc['outliers_3s'] = outliers_3s
+        
+        print("\nTop Outliers by IQR and 3σ:")
+        print(desc[['mean', 'std', 'min', 'max', 'outliers_iqr', 'outliers_3s']]
+            .sort_values("outliers_3s", ascending=False).head(10))
+        
     # 5. CATEGORICAL CHECKS
     print("\n5. CATEGORICAL CONSISTENCY")
     cat_df = df.select_dtypes(include=["object"])
@@ -77,5 +103,3 @@ def clinical_data_audit(df, name="dataset", missing_threshold=0.4):
         "high_missing": high_missing,
         "mid_missing": mid_missing
     }
-if __name__ == "__main__":
-    clinical_data_audit()

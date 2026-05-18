@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from src.extraction import extract_dtypes
-from src.check_data import check_data
+import src.check_data
 
 #predefined exclusion from known values
 exclude_columns = ['Study', 'Patient_ID', 'Digest']
