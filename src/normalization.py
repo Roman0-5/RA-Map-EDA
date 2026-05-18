@@ -148,5 +148,4 @@ def normalize_all(df, exclude_columns=None):
     df = normalize_bool_dtype(df)
     df = normalize_num_dtype(df)
     df = normalize_str_dtype(df, exclude_columns=exclude_columns)
-    check_data(df)
     return df

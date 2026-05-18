@@ -4,12 +4,15 @@ def load_all_sheets():
     """Loads all sheets as a dataframe\n
         Returns:
                 dict: Dictionary with the following DataFrames:
+                    Clinical:
                     - df_clinical: Clinical patient data
                     - df_steroids: Intramuscular steroids data
                     - df_meds: RA medications
                     - df_glossary: Glossary
+                    Protogen:
                     - df_Samples: Protogen samples
                     - df_Samples_Annotation: Sample annotations
+                    Somascan:
                     - df_expMatrix: SOMAscan expression matrix
                     - df_sampMatrix: SOMAscan sample matrix
     """
