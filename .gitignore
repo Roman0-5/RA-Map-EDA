@@ -8,6 +8,8 @@ __pycache__/
 # VSCode
 .vscode/
 
+# IntelliJ IDEA IDE
+.idea
 #macOS
 .DS_STORE
 .DS_Store
