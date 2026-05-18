@@ -7,7 +7,7 @@ Output is intended for Jupyter notebooks
 Functions:
     show_sheet_overview: List all keys in a dict of DataFrames
     show_dataset_structure: Print shape of each DataFrame in the dict
-    inspect_dataset: Generic inspection fo DataFrame
+    inspect_dataset: Generic inspection for DataFrame
     inspect_omics_dataset: Specific inspection of omics Dataframe. Borrows inspect_dataset
     
 Example Usage:
