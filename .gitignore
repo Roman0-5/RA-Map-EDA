@@ -8,6 +8,8 @@ __pycache__/
 # VSCode
 .vscode/
 
+# IntelliJ IDEA IDE
+.idea
 #macOS
 .DS_STORE
 .DS_Store
@@ -23,3 +25,6 @@ cleaned_datasets/*
 #files created during runtime
 reports/*.txt
 reports/*.png
+
+# pyproject. toml generated files
+*.egg-info/
