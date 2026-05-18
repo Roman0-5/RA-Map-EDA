@@ -1,10 +1,12 @@
 import pandas as pd
 import numpy as np
 from src.extraction import extract_dtypes
+from src.normalization import normalize_all
 
 def data_quality_report(df):
     """Function to make a Dataqualityreport with df as Input"""
     #initializing objects from other function
+    df = normalize_all(df)
     df, only_num, only_str, only_obj = extract_dtypes(df)
     print("Dataquality report")
     print()
