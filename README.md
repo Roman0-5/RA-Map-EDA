@@ -31,22 +31,6 @@ mkdir -p datasets; curl \
 -o datasets/Protogen_RA_MAP_16_05_21.xlsx https://figshare.com/ndownloader/files/28033515 \
 -o datasets/SOMASCAN_RA-Map_figshare_17_11_20.xlsx https://figshare.com/ndownloader/files/25666688
 ``` 
-## Notebooks
-Now to the actual notebooks
-
-[Clinical Data](notebooks/clinical.ipynb)
-
-Patient_ID, Digest, Age, DAS28 Score,...
-
-[Protein Analysis, Collection](notebooks/protogen.ipynb)
-
-Antibody cells response to treatment
-
-[Response to Treatment](notebooks/somascan.ipynb)
-
-Labels such as Responder/Non-Responder, Samples with timestamps
-
-[EDA with a sample patient](notebooks/exploring_patient.ipynb)
 
 Exploratory Data Analysis using a Responder that spans across all Sheets 
 
