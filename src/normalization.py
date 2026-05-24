@@ -1,3 +1,14 @@
+"""
+function calls:
+    - normalize_num_dtype(df)
+    
+    - normalize_bool_dtype (df)
+    
+    - normalize_str_dtype (df)
+    
+    - normalize_obj_dtype (df)
+"""
+
 import pandas as pd
 import numpy as np
 from src.extraction import extract_dtypes
