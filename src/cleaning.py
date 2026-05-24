@@ -126,28 +126,13 @@ def merge_patient_datasets(df_clinical, df_steroids, df_meds):
     return df
 
 def final_preprocessing_full_dataset(df: pd.DataFrame, contract: dict) -> pd.DataFrame:
-    """ Final preprocessing step after merging all patient-level datasets. Produces an analysis-ready dataset (NOT final ML feature-selected data)."""
+    """Final preprocessing step after merging all patient-level datasets. Produces analysis-ready dataset (NOT feature-selected ML dataset)."""
     df = df.copy()
-    # SANITY CHECKS (Did everything merge properly)
-    # 1. Check for duplicate columns
-    duplicated_cols = df.columns[df.columns.duplicated()].tolist()
-    if len(duplicated_cols) > 0:
-        print(f"[WARNING] Duplicate columns found: {duplicated_cols}")
-        df = df.loc[:, ~df.columns.duplicated()]
-    # 2. Check for duplicate patient rows (if Digest exists)
-    if "Digest" in df.columns:
-        dup_ids = df["Digest"].duplicated().sum()
-        if dup_ids > 0:
-            print(f"[WARNING] Duplicate patient IDs found: {dup_ids}")
-    # 3. Basic missingness overview (optional but useful)
-    missing_ratio = df.isna().mean()
-    high_missing = missing_ratio[missing_ratio > 0.5]
-    if len(high_missing) > 0:
-        print("[WARNING] Columns with >50% missing values detected:")
-        print(high_missing.sort_values(ascending=False))
-    # FINAL PREPROCESSING
-    # 4. Impute missing values (patient-level only)
+    # 1. REMOVE CONSTANT FEATURES
+    nunique = df.nunique(dropna=True)
+    df = df.loc[:, nunique > 1]
+    # 2. IMPUTE MISSING VALUES
     df = impute_missing(df, contract)
-    # 5. Encode categorical variables
+    # 3. ENCODE CATEGORICAL VARIABLES
     df = encode_categories(df, contract)
     return df
