@@ -44,44 +44,59 @@ def clean_patient_level_data(df: pd.DataFrame, contract: dict) -> pd.DataFrame:
     return df
 
 def clean_event_level_data(df: pd.DataFrame, contract: dict) -> pd.DataFrame:
-    """Light preprocessing for event-level datasets (steroids, meds) Goal: make raw event data aggregation-safe WITHOUT changing meaning.
-    Does NOT: - impute missing values - encode categories - drop columns
+    """Light preprocessing for event-level datasets (steroids, meds).
+    Goal: make raw event data aggregation-safe WITHOUT changing meaning.
+    Does NOT: impute missing values, encode categories, or drop meaningful data.
     """
     df = df.copy()
     # 1. STANDARDISE MISSING VALUES
     df = df.replace(["NA", "N/A", "", " ", "null", "None", "ND"], np.nan)
-
     # 2. PARSE DATE COLUMNS
     for col in contract.get("datetime_columns", []):
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors="coerce")
-    # 3. CLEAN NUMERIC FIELDS (safe coercion only, no imputation)
+    # 3. CLEAN NUMERIC FIELDS (safe coercion only)
     for col in contract.get("numeric_columns", []):
         if col in df.columns:
             df[col] = (
                 df[col]
-                .astype(str)
-                .str.replace(",", ".", regex=False)   # decimal fix
-                .str.replace(">", "", regex=False)    # censoring removal
+                .astype("string")
+                .str.replace(",", ".", regex=False)
                 .str.strip()
             )
             df[col] = pd.to_numeric(df[col], errors="coerce")
-    # 4. STANDARDISE BINARY FIELDS (light only)
-    binary_map = {"y": 1, "n": 0,"yes": 1, "no": 0,"true": 1, "false": 0,"0": 0, "1": 1}
+    # 4. STANDARDISE BINARY FIELDS
+    binary_map = {
+        "y": 1, "n": 0,
+        "yes": 1, "no": 0,
+        "true": 1, "false": 0,
+        "0": 0, "1": 1
+    }
     for col in contract.get("binary_columns", []):
         if col in df.columns:
             cleaned = df[col].astype(str).str.strip().str.lower()
             df[col] = cleaned.replace(binary_map)
             df[col] = pd.to_numeric(df[col], errors="coerce")
-    # 5. LIGHT STRING NORMALISATION (no encoding)
+    # 5. LIGHT STRING NORMALISATION
     for col in contract.get("categorical_columns", []):
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip()
+    # 6. DROP TRUE DUPLICATE EVENTS (IMPORTANT FIX)
+    dedup_cols = [
+        "Digest",
+        "Date Given",
+        "Steroid",
+        "Dose",
+        "Route",
+        "Joint Injected"
+    ]
+    dedup_cols = [c for c in dedup_cols if c in df.columns]
+    df = df.drop_duplicates(subset=dedup_cols)
     return df
 
-def aggregate_steroids(df: pd.DataFrame) -> pd.DataFrame:
-    """ Aggregate steroid event data to patient level. Output: one row per Digest (patient).
-    """
+"""def aggregate_steroids(df: pd.DataFrame) -> pd.DataFrame:
+    """""" Aggregate steroid event data to patient level. Output: one row per Digest (patient).
+    """"""
     df = df.copy()
     # Ensure dates are sorted correctly for time-based features
     if "Date Given" in df.columns:
@@ -97,10 +112,46 @@ def aggregate_steroids(df: pd.DataFrame) -> pd.DataFrame:
         first_injection=("Date Given", "min"),
         last_injection=("Date Given", "max")
     ).reset_index()
+    return agg"""
+
+def aggregate_steroids(df: pd.DataFrame) -> pd.DataFrame:
+    """ Aggregate steroid event data to patient level. Output: One row per patient (Digest)."""
+    df = df.copy()
+    # Sort chronologically
+    if "Date Given" in df.columns:
+        df = df.sort_values(["Digest", "Date Given"])
+    agg = df.groupby("Digest").agg(
+        # Event counts
+        steroid_injection_count=("Steroid", "count"),
+        # Dose summaries
+        steroid_total_dose=("Dose", "sum"),
+        steroid_mean_dose=("Dose", "mean"),
+        steroid_max_dose=("Dose", "max"),
+        # Route counts
+        intraarticular_count=(
+            "Route",
+            lambda x: (
+                x.astype(str)
+                 .str.lower()
+                 .str.contains("intraarticular", na=False)
+            ).sum()
+        ),
+        intramuscular_count=(
+            "Route",
+            lambda x: (
+                x.astype(str)
+                 .str.lower()
+                 .str.contains("intramuscular", na=False)
+            ).sum()
+        ),
+        # Temporal features
+        first_injection=("Date Given", "min"),
+        last_injection=("Date Given", "max")
+    ).reset_index()
     return agg
 
-def aggregate_meds(df: pd.DataFrame) -> pd.DataFrame:
-    """Aggregate medication event data to patient level. Output: one row per Digest (patient)."""
+"""def aggregate_meds(df: pd.DataFrame) -> pd.DataFrame:
+    """"""Aggregate medication event data to patient level. Output: one row per Digest (patient).""""""
     df = df.copy()
     if "Date Started" in df.columns:
         df = df.sort_values(["Digest", "Date Started"])
@@ -111,6 +162,25 @@ def aggregate_meds(df: pd.DataFrame) -> pd.DataFrame:
         total_dose=("Dose", "sum"),
         mean_dose=("Dose", "mean"),
 
+        first_med_date=("Date Started", "min"),
+        last_med_date=("Date Started", "max")
+    ).reset_index()
+    return agg """
+
+def aggregate_meds(df: pd.DataFrame) -> pd.DataFrame:
+    """ Aggregate medication event data to patient level. Output: One row per patient (Digest). """
+    df = df.copy()
+    # Sort chronologically
+    if "Date Started" in df.columns:
+        df = df.sort_values(["Digest", "Date Started"])
+    agg = df.groupby("Digest").agg(
+        # Medication exposure counts
+        med_event_count=("RA Medication", "count"),
+        unique_medications=("RA Medication", "nunique"),
+        # Dose summaries
+        med_total_dose=("Dose", "sum"),
+        med_mean_dose=("Dose", "mean"),
+        # Temporal features
         first_med_date=("Date Started", "min"),
         last_med_date=("Date Started", "max")
     ).reset_index()

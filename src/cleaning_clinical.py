@@ -9,16 +9,24 @@ def clean_invalid_numeric_formats(df: pd.DataFrame, contract: dict) -> pd.DataFr
     numeric_cols += contract.get("numeric_columns", [])
     numeric_cols += contract.get("static_numeric", [])
     numeric_cols += contract.get("longitudinal_numeric", [])
-
     for col in numeric_cols:
         if col in df.columns:
-            # convert to string temporarily
-            cleaned = df[col].astype(str).str.strip()
-            # european decimal commas
+            cleaned = (
+                df[col]
+                .astype(str)
+                .str.strip()
+                .replace([
+                    "NA", "N/A", "ND", "Missing",
+                    "missing", "null", "None", "",
+                    " ", "-99", "-99.0"
+                ], np.nan)
+            )
+            # European decimal commas
             cleaned = cleaned.str.replace(",", ".", regex=False)
-            # remove leading >
+            # Remove inequality signs
             cleaned = cleaned.str.replace(">", "", regex=False)
-            # invalid slash values → NaN
+            cleaned = cleaned.str.replace("<", "", regex=False)
+            # Remove impossible slash values like 120/80
             cleaned = cleaned.replace(
                 to_replace=r"^\d+/\d+$",
                 value=np.nan,
@@ -147,4 +155,21 @@ def impute_missing(df: pd.DataFrame, contract: dict) -> pd.DataFrame:
                 mode = df[col].mode()
                 if len(mode) > 0:
                     df[col] = df[col].fillna(mode[0])
+    return df
+
+import pandas as pd
+import numpy as np
+
+def clean_raw_artifacts(df, contract):
+    df = df.copy()
+    # 1. basic missing encodings
+    df = df.replace([
+        "NA", "N/A", "", " ", "null", "None", "ND",
+        "-99", "-99.0"
+    ], np.nan)
+    # 2. datetime cleanup
+    for col in contract.get("datetime_columns", []):
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors="coerce")
+            df[col] = df[col].replace(pd.Timestamp("1900-01-01"), pd.NaT)
     return df

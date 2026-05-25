@@ -75,12 +75,12 @@ STEROIDS_CONTRACT = {
         "Steroid",
         "Route",
         "Joint Injected",
-        "Unit"
     ],
 
     "numeric_columns": [
         "Dose",
-        "Assessment"
+        "Assessment",
+        "Unit"
     ],
 
     "binary_columns": [
