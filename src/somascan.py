@@ -98,7 +98,7 @@ def helper_extract_timestamps(
     
     For each unique timepoint in the sample matrix select the corresponding
     rows from the expression matrix and prepend a Patient_ID column.
-    Renames sample suffixes from '_Baseline'/'_6month' to '_BL'/'_6M'.
+    Renames sample suffixes from '_Baseline'/'_6month' to '_BL'/'_M6'.
     
     Args:
         df_exp: Expression matrix already indexed by SampleId and transposed.
@@ -111,7 +111,7 @@ def helper_extract_timestamps(
         Dict mapping each timepoint to a DataFrame of its samples,
         with Patient_ID as the first column.
     """
-    suffix_map = {'Baseline': 'BL', '6month': '6M'}
+    suffix_map = {'Baseline': 'BL', '6month': 'M6'}
     result = {}
     
     for timepoint, group in df_samp.groupby(timepoint_col):
@@ -147,7 +147,7 @@ def save_splits(
                     '../mid_processing_datasets'.
     """
     os.makedirs(output_dir, exist_ok=True)
-    suffix_map = {'bl': 'bl', '6m': '6m'}
+    suffix_map = {'bl': 'bl', 'm6': 'm6'}
     
     for timepoint, df in splits.items():
         suffix = suffix_map.get(timepoint, timepoint.lower())
