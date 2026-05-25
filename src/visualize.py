@@ -16,8 +16,8 @@ def visualize_timepoints():
     3. Trajectory plot showing patient movement from BL to 6M
     """
     # 1. Beide Zeitpunkte laden
-    df_bl = pd.read_parquet('../mid_processing_datasets/expression_matrix_bl.parquet')
-    df_6m = pd.read_parquet('../mid_processing_datasets/expression_matrix_6m.parquet')
+    df_bl = pd.read_parquet('../mid_processing_datasets/expression_matrix_baseline.parquet')
+    df_6m = pd.read_parquet('../mid_processing_datasets/expression_matrix_6month.parquet')
     
     # 2. Nur TAC-Patienten (VAC ausfiltern)
     df_bl = df_bl[df_bl['Patient_ID'].str.startswith('TAC')].copy()
