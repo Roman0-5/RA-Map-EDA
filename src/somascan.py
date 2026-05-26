@@ -41,7 +41,7 @@ def load() -> dict:
         Dict mapping sheet names to DataFrames
     """
     print('Loading somascan...')
-    df = pd.read_excel('../datasets/SOMASCAN_RA-Map_figshare_17_11_20.xlsx', 
+    df = pd.read_excel('../../datasets/SOMASCAN_RA-Map_figshare_17_11_20.xlsx', 
         sheet_name=None)
     print("Done loading!")
     return {

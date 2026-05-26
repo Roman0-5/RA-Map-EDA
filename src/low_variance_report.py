@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-def low_variance_report(df, name="dataset", threshold=0.01, return_drop_list=True, verbose=True):
+def low_variance_report(df, name="dataset", threshold=0.2, return_drop_list=True, verbose=True):
     """
     Detects low-variance features in a dataset.
     This is a feature screening step BEFORE preprocessing.
