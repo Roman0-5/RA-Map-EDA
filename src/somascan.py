@@ -92,25 +92,26 @@ def helper_extract_timestamps(
     df_samp: pd.DataFrame,
     patient_id_col: str = 'Patient_ID',
     sample_id_col: str = 'SampleId',
-    timepoint_col: str = 'TimePoint'
+    timepoint_col: str = 'TimePoint',
     ) -> dict:
-    """Group expression matrix by timepoint using sample matrix as a column lookup
+    """Group expression matrix by timepoint using sample matrix as a column lookup.
     
     For each unique timepoint in the sample matrix select the corresponding
-    row from the expression matrix and append a Patient_ID column
+    rows from the expression matrix and prepend a Patient_ID column.
+    Renames sample suffixes from '_Baseline'/'_6month' to '_BL'/'_M6'.
     
     Args:
-        df_exp: Expression matrix already indexed by SampleId and transposed 
-        df_samp: Sample Matrix
-        patient_id_col: Column name for patient identifier, defaults to 'Patient_ID'.
-        sample_id_col: Column name for sample identifier, defaults to 'SampleId'.
-        timepoint_col: Column name to group by, defaults to 'TimePoint'.
+        df_exp: Expression matrix already indexed by SampleId and transposed.
+        df_samp: Sample Matrix.
+        patient_id_col: Column name for patient identifier.
+        sample_id_col: Column name for sample identifier.
+        timepoint_col: Column name to group by.
     
     Returns:
         Dict mapping each timepoint to a DataFrame of its samples,
-        with Patient_ID indexed as the first column
+        with Patient_ID as the first column.
     """
-    # empty result dict 
+    suffix_map = {'Baseline': 'BL', '6month': 'M6'}
     result = {}
     
     for timepoint, group in df_samp.groupby(timepoint_col):
@@ -119,6 +120,12 @@ def helper_extract_timestamps(
         
         id_to_patient = dict(zip(group[sample_id_col], group[patient_id_col]))
         subset.insert(0, 'Patient_ID', subset.index.map(id_to_patient))
+        
+        if timepoint in suffix_map:
+            old_suffix = f'_{timepoint}'
+            new_suffix = f'_{suffix_map[timepoint]}'
+            subset.index = subset.index.str.replace(old_suffix, new_suffix, regex=False)
+            subset.index.name = 'SampleId'
         
         result[timepoint] = subset
     
@@ -140,7 +147,7 @@ def save_splits(
                     '../mid_processing_datasets'.
     """
     os.makedirs(output_dir, exist_ok=True)
-    suffix_map = {'Baseline': 'bl', '6month': '6m'}
+    suffix_map = {'bl': 'bl', 'm6': 'm6'}
     
     for timepoint, df in splits.items():
         suffix = suffix_map.get(timepoint, timepoint.lower())
