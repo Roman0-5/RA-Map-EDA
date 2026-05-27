@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 def plot_value_distribution(
@@ -149,6 +150,67 @@ def plot_outlier_boxplot(df: pd.DataFrame, name: str = "dataset",
     
     os.makedirs(output_dir, exist_ok=True)
     path = f"{output_dir}/{name}_boxplot_top{top_n}.svg"
+    plt.savefig(path, dpi=100, bbox_inches='tight')
+    plt.close()
+    print(f"Saved: {path}")
+    
+def plot_strip_boxplot(df, name="dataset", output_dir="../reports", 
+                       top_n=20, log_transform=True):
+    """Boxplot with stripplot overlay showing all individual datapoints.
+    
+    Uses log2 transformation for skewed RFU data so that the IQR-based
+    whiskers are statistically meaningful.
+    
+    Args:
+        df: DataFrame with numeric features in columns.
+        name: For title and filename.
+        output_dir: Where to save the plot.
+        top_n: Number of highest-variance features to show.
+        log_transform: Apply log2(x+1) before plotting.
+    """
+    # Nur numerische Features
+    num_df = df.select_dtypes(include=[np.number])
+    
+    if num_df.shape[1] == 0:
+        print(f"No numeric columns in {name}")
+        return
+    
+    # Top-N nach Varianz
+    top_features = num_df.var().sort_values(ascending=False).head(top_n).index
+    data = num_df[top_features].copy()
+    
+    # Log2-Transformation
+    if log_transform:
+        data = np.log2(data + 1)
+        ylabel = 'log2(RFU + 1)'
+    else:
+        ylabel = 'RFU'
+    
+    fig, ax = plt.subplots(figsize=(14, 7))
+    
+    # 1. Boxplot in hellem Grau (Hintergrund-Struktur)
+    sns.boxplot(data=data, ax=ax, whis=1.5, 
+                color='lightgray', showfliers=False)
+    
+    # 2. Strip Plot drüber (alle einzelnen Patienten)
+    sns.stripplot(data=data, ax=ax, 
+                  color='steelblue', alpha=0.5, size=4, 
+                  jitter=0.25)
+    
+    ax.set_title(f'{name}: Top {top_n} high-variance proteins')
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel('Protein (SeqId)')
+    
+    # X-Labels rotieren damit sie lesbar sind
+    plt.xticks(rotation=45, ha='right')
+    
+    ax.grid(axis='y', alpha=0.3)
+    
+    plt.tight_layout()
+    
+    # Speichern
+    os.makedirs(output_dir, exist_ok=True)
+    path = f"{output_dir}/{name}_strip_boxplot.png"
     plt.savefig(path, dpi=100, bbox_inches='tight')
     plt.close()
     print(f"Saved: {path}")
