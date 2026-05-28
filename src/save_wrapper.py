@@ -1,7 +1,7 @@
 import os
 from contextlib import redirect_stdout
 
-def save_report(report_func, df, name, output_dir='../reports', **kwargs):
+def save_report(report_func, df, name, output_dir='../../reports', **kwargs):
     """Generic save-to-file wrapper for any report function.
     
     Args:
