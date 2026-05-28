@@ -1,5 +1,5 @@
 import pandas as pd
-
+import numpy as np
 
 PROTOGEN_FILE = "../datasets/Protogen_RA_MAP_16_05_21.xlsx"
 MEASUREMENT_SHEET = "LIS_PG665-P01 RA MAP Samples Ex"
@@ -202,3 +202,90 @@ def inspect_missing_values(df_features: pd.DataFrame) -> pd.DataFrame:
 
 #---------------------------------------------------------------------------------------------
 
+def inspect_low_variance_features(df_features: pd.DataFrame, threshold: float = 1e-8) -> pd.DataFrame:
+    """
+    Inspect feature variance and return a summary table sorted by variance.
+    """
+    variance_summary = pd.DataFrame({
+        "feature": df_features.columns,
+        "variance": df_features.var(axis=0).values
+    }).sort_values("variance", ascending=True)
+
+    low_var_count = (variance_summary["variance"] <= threshold).sum()
+
+    print("Low-variance inspection completed.")
+    print(f"Feature shape: {df_features.shape}")
+    print(f"Features with variance <= {threshold}: {low_var_count}")
+
+    return variance_summary
+
+#---------------------------------------------------------------------------------------------
+
+def inspect_high_correlation_features(
+    df_features: pd.DataFrame,
+    threshold: float = 0.9
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Inspect highly correlated feature pairs.
+
+    Returns
+    -------
+    corr_matrix : pd.DataFrame
+        Absolute correlation matrix.
+    high_corr_pairs : pd.DataFrame
+        Table of feature pairs with correlation above threshold.
+    """
+    corr_matrix = df_features.corr().abs()
+
+    upper = corr_matrix.where(
+        pd.DataFrame(
+            np.triu(np.ones(corr_matrix.shape), k=1).astype(bool),
+            index=corr_matrix.index,
+            columns=corr_matrix.columns
+        )
+    )
+
+    high_corr_pairs = (
+        upper.stack()
+        .reset_index()
+        .rename(columns={"level_0": "feature_1", "level_1": "feature_2", 0: "correlation"})
+        .sort_values("correlation", ascending=False)
+    )
+
+    high_corr_pairs = high_corr_pairs[high_corr_pairs["correlation"] > threshold].copy()
+
+    print("High-correlation inspection completed.")
+    print(f"Feature shape: {df_features.shape}")
+    print(f"Highly correlated pairs (>{threshold}): {len(high_corr_pairs)}")
+
+    return corr_matrix, high_corr_pairs
+
+
+def remove_high_correlation_features(
+    df_features: pd.DataFrame,
+    threshold: float = 0.9
+) -> tuple[pd.DataFrame, list]:
+    """
+    Remove highly correlated features by dropping one feature from each pair
+    above the threshold.
+    """
+    corr_matrix = df_features.corr().abs()
+
+    upper = corr_matrix.where(
+        pd.DataFrame(
+            np.triu(np.ones(corr_matrix.shape), k=1).astype(bool),
+            index=corr_matrix.index,
+            columns=corr_matrix.columns
+        )
+    )
+
+    cols_to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
+
+    df_reduced = df_features.drop(columns=cols_to_drop).copy()
+
+    print("High-correlation removal completed.")
+    print(f"Original feature shape: {df_features.shape}")
+    print(f"Reduced feature shape: {df_reduced.shape}")
+    print(f"Removed highly correlated features: {len(cols_to_drop)}")
+
+    return df_reduced, cols_to_drop
