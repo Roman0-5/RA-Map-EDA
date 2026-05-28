@@ -53,8 +53,10 @@ def plot_pca_scatter(X_scaled: np.ndarray, pca: PCA, name: str,
     """
     pcs = pca.transform(X_scaled)
     
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.scatter(pcs[:, 0], pcs[:, 1], alpha=0.6, s=50)
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.scatter(pcs[:, 0], pcs[:, 1], alpha=0.6, s=50,
+               edgecolor='white', linewidths=0.5)
+
     ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%})')
     ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%})')
     ax.set_title(f'{name}: PCA (PC1 vs PC2)')
