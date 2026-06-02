@@ -44,24 +44,29 @@ def plot_distribution(X: pd.DataFrame, name: str, output_dir: str,
 def plot_pca_scatter(X_scaled: np.ndarray, pca: PCA, name: str,
                      output_dir: str,
                      labels: pd.Series | None = None,
-                     label_name: str = 'Group') -> pd.DataFrame | None:
+                     label_name: str = 'Group',
+                     patient_ids: pd.Series | None = None) -> pd.DataFrame | None:
     """PC1 vs PC2 scatter plot, optionally coloured by a clinical label.
 
     When labels are provided the function also saves a .txt file containing
-    one row per sample with columns: PC1, PC2, Label.
+    one row per sample with columns: Patient_ID, PC1, PC2, Label.
 
     Args:
-        X_scaled:   Standardized data (samples × features).
-        pca:        Fitted PCA object.
-        name:       For title and filename.
-        output_dir: Save location.
-        labels:     Optional Series/array (same length as X_scaled rows) with
-                    group strings per sample.  When None the plot is monochrome.
-        label_name: Legend title shown in the plot.
+        X_scaled:    Standardized data (samples × features).
+        pca:         Fitted PCA object.
+        name:        For title and filename.
+        output_dir:  Save location.
+        labels:      Optional Series/array (same length as X_scaled rows) with
+                     group strings per sample.  When None the plot is monochrome.
+        label_name:  Legend title shown in the plot.
+        patient_ids: Optional Series/array of Patient_ID strings, same length
+                     and order as X_scaled rows.  Added as first column in the
+                     .txt output so each PC point can be traced back to a
+                     patient.
 
     Returns:
-        DataFrame with columns PC1, PC2, Label when labels are provided,
-        otherwise None.
+        DataFrame with columns Patient_ID (if provided), PC1, PC2, Label
+        when labels are provided, otherwise None.
     """
     pcs = pca.transform(X_scaled)
 
@@ -101,12 +106,16 @@ def plot_pca_scatter(X_scaled: np.ndarray, pca: PCA, name: str,
 
         ax.legend(title=label_name, framealpha=0.9, loc='best', fontsize=9)
 
-        # Build label DataFrame and save as .txt
+        # Build label DataFrame — include Patient_ID if provided
         label_df = pd.DataFrame({
             'PC1':   pcs[:, 0],
             'PC2':   pcs[:, 1],
             'Label': labels,
         })
+        if patient_ids is not None:
+            label_df.insert(0, 'Patient_ID',
+                            pd.Series(patient_ids).reset_index(drop=True))
+
         txt_path = f'{output_dir}/{name}_pca_labels.txt'
         label_df.to_csv(txt_path, sep='\t', index=False)
         print(f"Saved: {txt_path}")

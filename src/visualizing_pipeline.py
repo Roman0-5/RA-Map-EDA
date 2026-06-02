@@ -73,6 +73,12 @@ def visualize_raw(df: pd.DataFrame, name: str = "dataset",
     # 2. PCA — computed once, plotted once per label type
     X_scaled, pca = prepare_pca(X)
 
+    # Extract Patient_ID if available — used to annotate the .txt output
+    if 'Patient_ID' in df.columns:
+        patient_ids = df['Patient_ID'].reset_index(drop=True)
+    else:
+        patient_ids = None
+
     label_types = [label_type] if isinstance(label_type, str) else label_type
 
     for lt in label_types:
@@ -91,7 +97,8 @@ def visualize_raw(df: pd.DataFrame, name: str = "dataset",
         # Filename includes label type so files don't overwrite each other
         scatter_name = f"{name}_{lt}"
         plot_pca_scatter(X_scaled, pca, scatter_name, output_dir,
-                         labels=labels, label_name=legend_title)
+                         labels=labels, label_name=legend_title,
+                         patient_ids=patient_ids)
 
     plot_scree(pca, name, output_dir, n_show=n_show_scree)
 
