@@ -17,11 +17,11 @@ def load_all_sheets():
                     - df_sampMatrix: SOMAscan sample matrix
     """
     print('Loading clinical...')
-    clinical_sheet = pd.read_excel('../datasets/RA_MAP_Clinical_Figshare_17_5_21.xlsx', sheet_name=None)
+    clinical_sheet = pd.read_excel('../../datasets/RA_MAP_Clinical_Figshare_17_5_21.xlsx', sheet_name=None)
     print('Loading protogen...')
-    protogen_sheet = pd.read_excel('../datasets/Protogen_RA_MAP_16_05_21.xlsx', sheet_name=None)
+    protogen_sheet = pd.read_excel('../../datasets/Protogen_RA_MAP_16_05_21.xlsx', sheet_name=None)
     print('Loading somascan...')
-    somascan_sheet = pd.read_excel('../datasets/SOMASCAN_RA-Map_figshare_17_11_20.xlsx', sheet_name=None)
+    somascan_sheet = pd.read_excel('../../datasets/SOMASCAN_RA-Map_figshare_17_11_20.xlsx', sheet_name=None)
     
     print("Done loading")
     return {

@@ -51,27 +51,27 @@ def remove_high_correlation_features(
     print(f"Computing correlation matrix for {X.shape[1]} features "
           f"({X.shape[0]} samples) …")
 
-    # Median-impute before correlating so NaNs don't shrink pair counts
-    X_imp     = X.fillna(X.median())
-    variances = X_imp.var()
-
-    corr  = X_imp.corr().abs()
+    variances = X.var()
+    corr  = X.corr().abs()
+    #isolate upper triangle of matrix 
     upper = corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
 
     to_drop: set[str] = set()
 
+    # iterate over upper triangle 
     for col in upper.columns:
         if col in to_drop:
             continue
+        # all values that are above the threshold respective to their column 
         partners = upper.index[upper[col] >= threshold].tolist()
         for partner in partners:
             if partner in to_drop:
                 continue
             if variances[col] >= variances[partner]:
-                to_drop.add(partner)   # col wins → drop partner
+                to_drop.add(partner)   # col wins -> drop partner
             else:
-                to_drop.add(col)       # partner wins → drop col
-                break
+                to_drop.add(col)       # partner wins -> drop col
+                break #if column is dropped, break
 
     all_features   = list(X.columns)
     to_drop_sorted = sorted(to_drop)

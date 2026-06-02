@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-PROTOGEN_FILE = "../datasets/Protogen_RA_MAP_16_05_21.xlsx"
+PROTOGEN_FILE = "../../datasets/Protogen_RA_MAP_16_05_21.xlsx"
 MEASUREMENT_SHEET = "LIS_PG665-P01 RA MAP Samples Ex"
 ANNOTATION_SHEET = "Sample annotation"
 
@@ -45,11 +45,11 @@ def filter_annotation_ra_bl(df_annotation: pd.DataFrame) -> pd.DataFrame:
 
     df_filtered = df_annotation.loc[
         (df_annotation["Study"] == "TACERA") &
-        (df_annotation["Timepoint"] == "BL"),
+        (df_annotation["Timepoint"].isin(["BL", "M6"])),
         relevant_cols
     ].copy()
 
-    print("Filtered annotation to TACERA + BL.")
+    print("Filtered annotation to TACERA + BL + M6.")
     print(f"Filtered annotation shape: {df_filtered.shape}")
     print(f"Unique SampleIds: {df_filtered['SampleId'].nunique()}")
     print(f"Unique Patient_ID: {df_filtered['Patient_ID'].nunique()}")
