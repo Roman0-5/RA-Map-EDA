@@ -18,12 +18,10 @@ Thumbs.db
 desktop.ini
 # Data downloaded from figshare and created by executed scripts
 *.xlsx
-*.parquet
 *.adat
 *.svg
 datasets/*
-cleaned_datasets/*
-
+mid_processing_datasets/*
 #files created during runtime
 reports/*.txt
 reports/*.png
