@@ -44,29 +44,24 @@ def plot_distribution(X: pd.DataFrame, name: str, output_dir: str,
 def plot_pca_scatter(X_scaled: np.ndarray, pca: PCA, name: str,
                      output_dir: str,
                      labels: pd.Series | None = None,
-                     label_name: str = 'Group',
-                     patient_ids: pd.Series | None = None) -> pd.DataFrame | None:
+                     label_name: str = 'Group') -> pd.DataFrame | None:
     """PC1 vs PC2 scatter plot, optionally coloured by a clinical label.
 
     When labels are provided the function also saves a .txt file containing
-    one row per sample with columns: Patient_ID, PC1, PC2, Label.
+    one row per sample with columns: PC1, PC2, Label.
 
     Args:
-        X_scaled:    Standardized data (samples × features).
-        pca:         Fitted PCA object.
-        name:        For title and filename.
-        output_dir:  Save location.
-        labels:      Optional Series/array (same length as X_scaled rows) with
-                     group strings per sample.  When None the plot is monochrome.
-        label_name:  Legend title shown in the plot.
-        patient_ids: Optional Series/array of Patient_ID strings, same length
-                     and order as X_scaled rows.  Added as first column in the
-                     .txt output so each PC point can be traced back to a
-                     patient.
+        X_scaled:   Standardized data (samples × features).
+        pca:        Fitted PCA object.
+        name:       For title and filename.
+        output_dir: Save location.
+        labels:     Optional Series/array (same length as X_scaled rows) with
+                    group strings per sample.  When None the plot is monochrome.
+        label_name: Legend title shown in the plot.
 
     Returns:
-        DataFrame with columns Patient_ID (if provided), PC1, PC2, Label
-        when labels are provided, otherwise None.
+        DataFrame with columns PC1, PC2, Label when labels are provided,
+        otherwise None.
     """
     pcs = pca.transform(X_scaled)
 
@@ -106,16 +101,12 @@ def plot_pca_scatter(X_scaled: np.ndarray, pca: PCA, name: str,
 
         ax.legend(title=label_name, framealpha=0.9, loc='best', fontsize=9)
 
-        # Build label DataFrame — include Patient_ID if provided
+        # Build label DataFrame and save as .txt
         label_df = pd.DataFrame({
             'PC1':   pcs[:, 0],
             'PC2':   pcs[:, 1],
             'Label': labels,
         })
-        if patient_ids is not None:
-            label_df.insert(0, 'Patient_ID',
-                            pd.Series(patient_ids).reset_index(drop=True))
-
         txt_path = f'{output_dir}/{name}_pca_labels.txt'
         label_df.to_csv(txt_path, sep='\t', index=False)
         print(f"Saved: {txt_path}")
@@ -282,6 +273,143 @@ def build_eular_labels(df: pd.DataFrame,
         return 'Non-Responder'
 
     return ids.map(_eular)
+
+
+def build_total_dose_x_therapy_labels(df: pd.DataFrame,
+                               clinical_df: pd.DataFrame) -> pd.Series:
+    """
+    Therapy intensity labels based on total_dose_x.
+
+    Produces:
+        - Low
+        - Medium
+        - High
+        - Very High
+        - Unknown
+    """
+
+    def _get_ids(frame: pd.DataFrame) -> pd.Series:
+        if "Patient_ID" in frame.columns:
+            return frame["Patient_ID"].astype(str)
+        return frame.index.astype(str).rename("Patient_ID")
+
+    ids = _get_ids(df).reset_index(drop=True)
+
+    clin = clinical_df.copy()
+    if "Patient_ID" not in clin.columns:
+        clin = clin.reset_index()
+
+    clin["Patient_ID"] = clin["Patient_ID"].astype(str)
+
+    if "total_dose_x" not in clin.columns:
+        raise ValueError("total_dose_x not found in clinical_df")
+
+    lookup = clin.set_index("Patient_ID")["total_dose_x"]
+
+    values = ids.map(lambda pid: lookup.get(pid, None))
+
+    numeric = pd.to_numeric(values, errors="coerce")
+
+    all_labels = ["Low", "Medium", "High", "Very High"]
+    # qcut with duplicates='drop' may produce fewer bins than requested
+    # match label count to actual number of bins
+    cut, bins = pd.qcut(numeric, q=4, labels=False,
+                        duplicates="drop", retbins=True)
+    n_bins = len(bins) - 1
+    return pd.qcut(numeric, q=4,
+                   labels=all_labels[:n_bins],
+                   duplicates="drop")
+
+def build_total_dose_y_therapy_labels(df: pd.DataFrame,
+                               clinical_df: pd.DataFrame) -> pd.Series:
+    """
+    Therapy intensity labels based on total_dose_y.
+
+    Produces:
+        - Low
+        - Medium
+        - High
+        - Very High
+        - Unknown
+    """
+
+    def _get_ids(frame: pd.DataFrame) -> pd.Series:
+        if "Patient_ID" in frame.columns:
+            return frame["Patient_ID"].astype(str)
+        return frame.index.astype(str).rename("Patient_ID")
+
+    ids = _get_ids(df).reset_index(drop=True)
+
+    clin = clinical_df.copy()
+    if "Patient_ID" not in clin.columns:
+        clin = clin.reset_index()
+
+    clin["Patient_ID"] = clin["Patient_ID"].astype(str)
+
+    if "total_dose_y" not in clin.columns:
+        raise ValueError("total_dose_y not found in clinical_df")
+
+    lookup = clin.set_index("Patient_ID")["total_dose_y"]
+
+    values = ids.map(lambda pid: lookup.get(pid, None))
+
+    numeric = pd.to_numeric(values, errors="coerce")
+
+    all_labels = ["Low", "Medium", "High", "Very High"]
+    cut, bins = pd.qcut(numeric, q=4, labels=False,
+                        duplicates="drop", retbins=True)
+    n_bins = len(bins) - 1
+    return pd.qcut(numeric, q=4,
+                   labels=all_labels[:n_bins],
+                   duplicates="drop")
+
+
+def build_inflammation_labels(df: pd.DataFrame,
+                              clinical_df: pd.DataFrame) -> pd.Series:
+    """
+    Simple inflammation stratification based on CRP levels.
+
+    Produces:
+        - Low
+        - Moderate
+        - High
+        - Unknown
+    """
+
+    def _get_ids(frame: pd.DataFrame) -> pd.Series:
+        if 'Patient_ID' in frame.columns:
+            return frame['Patient_ID'].astype(str)
+        return frame.index.astype(str).rename('Patient_ID')
+
+    ids = _get_ids(df).reset_index(drop=True)
+
+    clin = clinical_df.copy()
+    if 'Patient_ID' not in clin.columns:
+        clin = clin.reset_index()
+
+    clin['Patient_ID'] = clin['Patient_ID'].astype(str)
+
+    # choose inflammation marker here
+    clin = clin.set_index('Patient_ID')[['CRP.0M']]
+
+    def _inflammation(pid: str) -> str:
+        if pid not in clin.index:
+            return 'Unknown'
+
+        crp = clin.loc[pid, 'CRP.0M']
+
+        if pd.isna(crp):
+            return 'Unknown'
+
+        # thresholds (can be adjusted clinically later)
+        if crp < 5:
+            return 'Low'
+        elif crp < 20:
+            return 'Moderate'
+        else:
+            return 'High'
+
+    return ids.map(_inflammation)
 
 
 def prepare_pca(X: pd.DataFrame) -> tuple[np.ndarray, PCA]:

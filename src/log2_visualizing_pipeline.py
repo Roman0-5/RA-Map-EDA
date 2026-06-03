@@ -15,12 +15,18 @@ from src.visualizing_helper import (
     prepare_pca,
     build_remission_labels,
     build_eular_labels,
+    build_total_dose_y_therapy_labels,
+    build_total_dose_x_therapy_labels,
+    build_inflammation_labels
 )
 
 # Maps label_type string to (builder_function, legend_title)
 _LABEL_BUILDERS = {
     'remission': (build_remission_labels, 'Remission'),
     'eular':     (build_eular_labels,     'EULAR Response'),
+    'inflammation': (build_inflammation_labels, 'Inflammation'),
+    'therapy_x': (build_total_dose_x_therapy_labels, 'Total Dose X'),
+    'therapy_y': (build_total_dose_y_therapy_labels, 'Total Dose Y'),
 }
 
 
@@ -77,12 +83,6 @@ def visualize_log(df: pd.DataFrame, name: str = "dataset",
     # 2. PCA — computed once, plotted once per label type
     X_scaled, pca = prepare_pca(X_log)
 
-    # Extract Patient_ID if available — used to annotate the .txt output
-    if 'Patient_ID' in df.columns:
-        patient_ids = df['Patient_ID'].reset_index(drop=True)
-    else:
-        patient_ids = None
-
     label_types = [label_type] if isinstance(label_type, str) else label_type
 
     for lt in label_types:
@@ -101,8 +101,7 @@ def visualize_log(df: pd.DataFrame, name: str = "dataset",
         # Filename includes label type so files don't overwrite each other
         scatter_name = f"{name}_log2_{lt}"
         plot_pca_scatter(X_scaled, pca, scatter_name, output_dir,
-                         labels=labels, label_name=legend_title,
-                         patient_ids=patient_ids)
+                         labels=labels, label_name=legend_title)
 
     plot_scree(pca, f"{name}_log2", output_dir, n_show=n_show_scree)
 
