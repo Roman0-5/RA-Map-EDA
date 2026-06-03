@@ -19,49 +19,47 @@ from src.visualizing_helper import (
     build_inflammation_labels
 )
 
-# Maps label_type string to (builder_function, legend_title)
 _LABEL_BUILDERS = {
-    'remission': (build_remission_labels, 'Remission'),
-    'eular':     (build_eular_labels,     'EULAR Response'),
-    'inflammation': (build_inflammation_labels, 'Inflammation'),
-    'therapy_x': (build_total_dose_x_therapy_labels, 'Total Dose X'),
-    'therapy_y': (build_total_dose_y_therapy_labels, 'Total Dose Y'),
+    'remission':    (build_remission_labels,           'Remission'),
+    'eular':        (build_eular_labels,               'EULAR Response'),
+    'inflammation': (build_inflammation_labels,        'Inflammation'),
+    'therapy_x':    (build_total_dose_x_therapy_labels,'Total Dose X'),
+    'therapy_y':    (build_total_dose_y_therapy_labels,'Total Dose Y'),
 }
 
 
 def visualize_raw(df: pd.DataFrame, name: str = "dataset",
-                  output_dir: str = "../../reports/raw",
+                  modality: str = "expr",
+                  base_dir: str = "../../reports/raw",
                   top_n_boxplot: int = 20,
                   n_show_scree: int = 30,
                   clinical_df: pd.DataFrame | None = None,
                   label_type: str | list[str] = 'remission') -> None:
     """Run all EDA visualizations on raw data.
 
-    Generates:
-        - Distribution histogram (raw values)
-        - PCA scatter (PC1 vs PC2), one per label_type, coloured accordingly
-        - Scree plot
-        - Boxplot of top-N high-variance features
-
-    When labels are provided each PCA scatter also saves a .txt file with
-    columns PC1, PC2, Label — one row per sample.
+    Saves plots into structured subdirectories:
+        {base_dir}/pca/{modality}/
+        {base_dir}/scree/{modality}/
+        {base_dir}/distribution/{modality}/
+        {base_dir}/boxplot/{modality}/
 
     Args:
         df:            Input DataFrame (with or without ID columns).
         name:          Display name and filename prefix.
-        output_dir:    Where to save all plots.
+        modality:      Data modality: 'expr', 'pg', 'clinical', 'multiomics'.
+        base_dir:      Root reports directory (default: ../../reports/raw).
         top_n_boxplot: Features to show in boxplot.
         n_show_scree:  PCs to show in scree plot.
-        clinical_df:   Optional clinical DataFrame containing ``Patient_ID``
-                       and the columns required for the chosen label type(s).
-        label_type:    One label type or a list of label types to run.
-                       Supported values: ``'remission'``, ``'eular'``.
-                       Each produces a separate coloured PCA scatter + .txt.
+        clinical_df:   Optional clinical DataFrame for label colouring.
+        label_type:    One label type or list of label types.
     """
-    os.makedirs(output_dir, exist_ok=True)
+    def _dir(plot_type: str) -> str:
+        path = os.path.join(base_dir, plot_type, modality)
+        os.makedirs(path, exist_ok=True)
+        return path
 
     print(f"\n{'='*70}")
-    print(f"RAW EDA: {name.upper()}")
+    print(f"RAW EDA: {name.upper()}  [{modality}]")
     print(f"{'='*70}")
 
     X = df.select_dtypes(include=[np.number])
@@ -74,10 +72,14 @@ def visualize_raw(df: pd.DataFrame, name: str = "dataset",
     print(f"Value range: [{X.min().min():.1f}, {X.max().max():.1f}]")
 
     # 1. Distribution
-    plot_distribution(X, name, output_dir, xlabel='Raw value')
+    plot_distribution(X, name, _dir('distribution'), xlabel='Raw value')
 
     # 2. PCA — computed once, plotted once per label type
     X_scaled, pca = prepare_pca(X)
+
+    # Extract Patient_ID for .txt output
+    patient_ids = df['Patient_ID'].reset_index(drop=True) \
+        if 'Patient_ID' in df.columns else None
 
     label_types = [label_type] if isinstance(label_type, str) else label_type
 
@@ -88,21 +90,21 @@ def visualize_raw(df: pd.DataFrame, name: str = "dataset",
             continue
 
         labels, legend_title = None, 'Group'
-
         if clinical_df is not None:
             builder, legend_title = _LABEL_BUILDERS[lt]
             labels = builder(df, clinical_df)
             print(f"{legend_title} labels: {labels.value_counts().to_dict()}")
 
-        # Filename includes label type so files don't overwrite each other
-        scatter_name = f"{name}_{lt}"
-        plot_pca_scatter(X_scaled, pca, scatter_name, output_dir,
-                         labels=labels, label_name=legend_title)
+        pca_dir = os.path.join(_dir('pca'), lt)
+        os.makedirs(pca_dir, exist_ok=True)
+        plot_pca_scatter(X_scaled, pca, name, pca_dir,
+                         labels=labels, label_name=legend_title,
+                         patient_ids=patient_ids)
 
-    plot_scree(pca, name, output_dir, n_show=n_show_scree)
+    plot_scree(pca, name, _dir('scree'), n_show=n_show_scree)
 
     # 3. Boxplot
-    plot_boxplot(X, name, output_dir, top_n=top_n_boxplot,
+    plot_boxplot(X, name, _dir('boxplot'), top_n=top_n_boxplot,
                  ylabel='Raw value')
 
     print(f"\nDone with {name}\n")

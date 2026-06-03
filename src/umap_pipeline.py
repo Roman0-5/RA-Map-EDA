@@ -24,12 +24,21 @@ from umap import UMAP
 # ============================================================================
 
 PALETTE = {
-    'Remission':        '#2196F3',
-    'Non-Remission':    '#F44336',
-    'Good Responder':   '#4CAF50',
-    'Moderate':         '#FF9800',
-    'Non-Responder':    '#F44336',
-    'Unknown':          '#BDBDBD',
+    # Remission
+    'Remission':        '#2196F3',   # blue
+    'Non-Remission':    '#F44336',   # red
+    # EULAR
+    'Good Responder':   '#4CAF50',   # green
+    'Moderate':         '#FF9800',   # orange
+    'Non-Responder':    '#F44336',   # red
+    # Inflammation (CRP)
+    'Low':              '#81C784',   # light green
+    'High':             '#E53935',   # dark red
+    # Therapy dose (shared for x and y)
+    'Medium':           '#FFB74D',   # light orange
+    'Very High':        '#B71C1C',   # very dark red
+    # Fallback
+    'Unknown':          '#BDBDBD',   # grey
 }
 
 
@@ -256,7 +265,8 @@ def plot_umap_scatter(
 def run_umap(
     df: pd.DataFrame,
     name: str,
-    output_dir: str,
+    modality: str = "expr",
+    base_dir: str = "../../reports/umap",
     clinical_df: pd.DataFrame | None = None,
     label_type: str | list[str] = 'remission',
     n_pca_components: int = 50,
@@ -267,12 +277,16 @@ def run_umap(
 ) -> tuple[np.ndarray, pd.DataFrame | None]:
     """Full UMAP pipeline: preprocess → embed → plot.
 
+    Saves plots into:
+        {base_dir}/{modality}/
+
     Args:
         df:               Input DataFrame.
         name:             Dataset name for filenames and titles.
-        output_dir:       Where to save plots and .txt files.
+        modality:         Data modality: 'expr', 'pg', 'clinical', 'multiomics'.
+        base_dir:         Root reports directory (default: ../../reports/umap).
         clinical_df:      Clinical data for label colouring.
-        label_type:       ``'remission'``, ``'eular'``, or a list of both.
+        label_type:       'remission', 'eular', or a list of both.
         n_pca_components: PCA components before UMAP (None to skip).
         n_neighbors:      UMAP n_neighbors parameter.
         min_dist:         UMAP min_dist parameter.
@@ -289,16 +303,18 @@ def run_umap(
         embedding, label_df = run_umap(
             df          = expr_bl,
             name        = "expression_bl",
-            output_dir  = "reports/umap",
+            modality    = "expr",
+            base_dir    = "../../reports/umap",
             clinical_df = clinical,
             label_type  = ['remission', 'eular'],
         )
     """
-    print(f"\n{'='*70}")
-    print(f"UMAP: {name.upper()}")
-    print(f"{'='*70}")
-
+    output_dir = os.path.join(base_dir, modality)
     os.makedirs(output_dir, exist_ok=True)
+
+    print(f"\n{'='*70}")
+    print(f"UMAP: {name.upper()}  [{modality}]")
+    print(f"{'='*70}")
 
     # Compute embedding once
     embedding, info = fit_umap_embedding(

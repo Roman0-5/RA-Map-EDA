@@ -44,24 +44,26 @@ def plot_distribution(X: pd.DataFrame, name: str, output_dir: str,
 def plot_pca_scatter(X_scaled: np.ndarray, pca: PCA, name: str,
                      output_dir: str,
                      labels: pd.Series | None = None,
-                     label_name: str = 'Group') -> pd.DataFrame | None:
+                     label_name: str = 'Group',
+                     patient_ids: pd.Series | None = None) -> pd.DataFrame | None:
     """PC1 vs PC2 scatter plot, optionally coloured by a clinical label.
 
     When labels are provided the function also saves a .txt file containing
-    one row per sample with columns: PC1, PC2, Label.
+    one row per sample with columns: Patient_ID (if provided), PC1, PC2, Label.
 
     Args:
-        X_scaled:   Standardized data (samples × features).
-        pca:        Fitted PCA object.
-        name:       For title and filename.
-        output_dir: Save location.
-        labels:     Optional Series/array (same length as X_scaled rows) with
-                    group strings per sample.  When None the plot is monochrome.
-        label_name: Legend title shown in the plot.
+        X_scaled:    Standardized data (samples × features).
+        pca:         Fitted PCA object.
+        name:        For title and filename.
+        output_dir:  Save location.
+        labels:      Optional Series/array (same length as X_scaled rows) with
+                     group strings per sample.  When None the plot is monochrome.
+        label_name:  Legend title shown in the plot.
+        patient_ids: Optional Patient_ID per sample for .txt output.
 
     Returns:
-        DataFrame with columns PC1, PC2, Label when labels are provided,
-        otherwise None.
+        DataFrame with columns Patient_ID (if provided), PC1, PC2, Label
+        when labels are provided, otherwise None.
     """
     pcs = pca.transform(X_scaled)
 
@@ -77,12 +79,21 @@ def plot_pca_scatter(X_scaled: np.ndarray, pca: PCA, name: str,
         groups = labels.unique()
 
         palette = {
-            'Remission':        '#2196F3',
-            'Non-Remission':    '#F44336',
-            'Good Responder':   '#4CAF50',
-            'Moderate':         '#FF9800',
-            'Non-Responder':    '#F44336',
-            'Unknown':          '#BDBDBD',
+            # Remission
+            'Remission':        '#2196F3',   # blue
+            'Non-Remission':    '#F44336',   # red
+            # EULAR
+            'Good Responder':   '#4CAF50',   # green
+            'Moderate':         '#FF9800',   # orange
+            'Non-Responder':    '#F44336',   # red
+            # Inflammation (CRP)
+            'Low':              '#81C784',   # light green
+            'High':             '#E53935',   # dark red
+            # Therapy dose (shared for x and y)
+            'Medium':           '#FFB74D',   # light orange
+            'Very High':        '#B71C1C',   # very dark red
+            # Fallback
+            'Unknown':          '#BDBDBD',   # grey
         }
         fallback = sns.color_palette('tab10', n_colors=len(groups))
         for i, g in enumerate(groups):
@@ -107,6 +118,9 @@ def plot_pca_scatter(X_scaled: np.ndarray, pca: PCA, name: str,
             'PC2':   pcs[:, 1],
             'Label': labels,
         })
+        if patient_ids is not None:
+            label_df.insert(0, 'Patient_ID',
+                            pd.Series(patient_ids).reset_index(drop=True))
         txt_path = f'{output_dir}/{name}_pca_labels.txt'
         label_df.to_csv(txt_path, sep='\t', index=False)
         print(f"Saved: {txt_path}")
@@ -311,14 +325,9 @@ def build_total_dose_x_therapy_labels(df: pd.DataFrame,
     numeric = pd.to_numeric(values, errors="coerce")
 
     all_labels = ["Low", "Medium", "High", "Very High"]
-    # qcut with duplicates='drop' may produce fewer bins than requested
-    # match label count to actual number of bins
-    cut, bins = pd.qcut(numeric, q=4, labels=False,
-                        duplicates="drop", retbins=True)
+    _, bins = pd.qcut(numeric, q=4, labels=False, duplicates="drop", retbins=True)
     n_bins = len(bins) - 1
-    return pd.qcut(numeric, q=4,
-                   labels=all_labels[:n_bins],
-                   duplicates="drop")
+    return pd.qcut(numeric, q=4, labels=all_labels[:n_bins], duplicates="drop")
 
 def build_total_dose_y_therapy_labels(df: pd.DataFrame,
                                clinical_df: pd.DataFrame) -> pd.Series:
@@ -356,12 +365,9 @@ def build_total_dose_y_therapy_labels(df: pd.DataFrame,
     numeric = pd.to_numeric(values, errors="coerce")
 
     all_labels = ["Low", "Medium", "High", "Very High"]
-    cut, bins = pd.qcut(numeric, q=4, labels=False,
-                        duplicates="drop", retbins=True)
+    _, bins = pd.qcut(numeric, q=4, labels=False, duplicates="drop", retbins=True)
     n_bins = len(bins) - 1
-    return pd.qcut(numeric, q=4,
-                   labels=all_labels[:n_bins],
-                   duplicates="drop")
+    return pd.qcut(numeric, q=4, labels=all_labels[:n_bins], duplicates="drop")
 
 
 def build_inflammation_labels(df: pd.DataFrame,
