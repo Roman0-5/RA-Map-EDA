@@ -36,7 +36,7 @@ OUTPUT_PATH     = f"{OUT_DIR}/multiomics_longitudinal.parquet"
 # Main
 # ============================================================================
 
-def build_multiomics_longitudinal(
+def build_multiomics(
     clinical_path: str = CLINICAL_PATH,
     exp_bl_path:   str = EXP_BL_PATH,
     exp_m6_path:   str = EXP_M6_PATH,
