@@ -185,5 +185,6 @@ def create_gene_lookup(
     os.makedirs(output_dir, exist_ok=True)
     path = f'{output_dir}/gene_lookup.parquet'
     gene_lookup.to_parquet(path)
+    gene_lookup.to_parquet('../../cleaned_datasets/gene_lookup.csv')
     print(f"Saved: {path}")
     return gene_lookup
