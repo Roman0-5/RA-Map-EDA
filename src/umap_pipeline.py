@@ -85,11 +85,17 @@ def build_eular_labels(df: pd.DataFrame,
         if pd.isna(bl) or pd.isna(m6):
             return 'Unknown'
         delta = bl - m6
-        if delta > 1.2 and m6 <= 3.2:
-            return 'Good Responder'
-        if (delta > 1.2 and m6 > 3.2) or (delta > 0.6 and m6 <= 5.1):
-            return 'Moderate'
-        return 'Non-Responder'
+        # Fransen & van Riel 2005, Table IV (Clin Exp Rheumatol 23 Suppl 39)
+        if m6 <= 3.2:
+            if delta > 1.2:  return 'Good Responder'
+            if delta > 0.6:  return 'Moderate'
+            return 'Non-Responder'
+        elif m6 <= 5.1:
+            if delta > 0.6:  return 'Moderate'
+            return 'Non-Responder'
+        else:
+            if delta > 1.2:  return 'Moderate'
+            return 'Non-Responder'
 
     return ids.map(_eular)
 
