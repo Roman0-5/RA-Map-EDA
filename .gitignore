@@ -1,7 +1,7 @@
 # Python
 __pycache__/
 .venv/
-
+venv/
 # Jupyter
 .ipynb_checkpoints/
 
@@ -17,10 +17,12 @@ __pycache__/
 Thumbs.db
 desktop.ini
 # Data downloaded from figshare and created by executed scripts
-*.xlsx
 *.adat
+*.csv
+*.xlsx
+*.parquet
 *.svg
-datasets/*
+datasets/
 mid_processing_datasets/*
 #files created during runtime
 reports/
