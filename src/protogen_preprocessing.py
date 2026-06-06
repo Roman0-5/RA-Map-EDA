@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
+import os
 
-PROTOGEN_FILE = "../datasets/Protogen_RA_MAP_16_05_21.xlsx"
+
+PROTOGEN_FILE = "../../datasets/Protogen_RA_MAP_16_05_21.xlsx"
 MEASUREMENT_SHEET = "LIS_PG665-P01 RA MAP Samples Ex"
 ANNOTATION_SHEET = "Sample annotation"
 
@@ -280,3 +282,37 @@ def remove_high_correlation_features(
     )
 
     cols_to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
+
+#---------------------------------------------------------------------------------------------
+
+def create_protogen_lookup(
+    df_measurement_ra_bl: pd.DataFrame,
+    output_dir: str = "../../cleaned_datasets"
+) -> pd.DataFrame:
+    """
+    Create a lookup table for Protogen markers so biomarkers can be searched easily.
+    """
+
+    lookup_cols = ["ProteinID", "GeneID", "Gene Symbol", "Gene Name", "MarkerName"]
+
+    missing_cols = [col for col in lookup_cols if col not in df_measurement_ra_bl.columns]
+    if missing_cols:
+        raise KeyError(f"Missing required lookup columns: {missing_cols}")
+
+    protogen_lookup = df_measurement_ra_bl[lookup_cols].drop_duplicates().copy()
+
+    # optional: MarkerName als Index setzen
+    protogen_lookup = protogen_lookup.set_index("MarkerName")
+
+    # alles als String für einfaches Suchen / Speichern
+    protogen_lookup = protogen_lookup.astype(str)
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    protogen_lookup.to_csv(f"{output_dir}/protogen_lookup.csv")
+    protogen_lookup.to_parquet(f"{output_dir}/protogen_lookup.parquet")
+
+    print(f"Saved: {output_dir}/protogen_lookup.csv")
+    print(f"Saved: {output_dir}/protogen_lookup.parquet")
+
+    return protogen_lookup
