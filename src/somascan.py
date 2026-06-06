@@ -1,5 +1,6 @@
 """
 All functions already have default fallbacks provided.
+The output path is relative to where the function will and is intented to be called
 
 
 Usage:
@@ -41,7 +42,7 @@ def load() -> dict:
         Dict mapping sheet names to DataFrames
     """
     print('Loading somascan...')
-    df = pd.read_excel('../datasets/SOMASCAN_RA-Map_figshare_17_11_20.xlsx', 
+    df = pd.read_excel('../../datasets/SOMASCAN_RA-Map_figshare_17_11_20.xlsx', 
         sheet_name=None)
     print("Done loading!")
     return {
@@ -134,7 +135,7 @@ def helper_extract_timestamps(
 
 def save_splits(
     splits: dict,
-    output_dir: str = '../mid_processing_datasets'
+    output_dir: str = '../../mid_processing_datasets'
     ) -> None:
     """Save each timepoint dataframe as a parquet file
     
@@ -144,7 +145,7 @@ def save_splits(
     Args:
         splits: Dict mapping timepoint names to DataFrames
         output_dir: Target directory for parquet files. Defaults to
-                    '../mid_processing_datasets'.
+                    '../../mid_processing_datasets'.
     """
     os.makedirs(output_dir, exist_ok=True)
     suffix_map = {'bl': 'bl', 'm6': 'm6'}
@@ -158,7 +159,7 @@ def save_splits(
 
 def create_gene_lookup(
     df_exp: pd.DataFrame,
-    output_dir: str = '../mid_processing_datasets'
+    output_dir: str = '../../mid_processing_datasets'
     ) -> pd.DataFrame:
     """Save complete gene lookup table by SeqId,
     acts as a pseduo glosarry of proteins
@@ -169,7 +170,7 @@ def create_gene_lookup(
     Args:
         df_exp: Raw expression matrix containing annotation columns
         output_dir: Target directory for the parquet file, defaults to
-                    '../mid_processing_datasets'.
+                    '../../mid_processing_datasets'.
     
     Returns:
         Gene lookup DataFrame indexed by SeqId, with annotation columns
@@ -184,5 +185,6 @@ def create_gene_lookup(
     os.makedirs(output_dir, exist_ok=True)
     path = f'{output_dir}/gene_lookup.parquet'
     gene_lookup.to_parquet(path)
+    gene_lookup.to_parquet('../../cleaned_datasets/gene_lookup.csv')
     print(f"Saved: {path}")
     return gene_lookup

@@ -45,11 +45,11 @@ def filter_annotation_ra_bl(df_annotation: pd.DataFrame) -> pd.DataFrame:
 
     df_filtered = df_annotation.loc[
         (df_annotation["Study"] == "TACERA") &
-        (df_annotation["Timepoint"] == "BL"),
+        (df_annotation["Timepoint"].isin(["BL", "M6"])),
         relevant_cols
     ].copy()
 
-    print("Filtered annotation to TACERA + BL.")
+    print("Filtered annotation to TACERA + BL + M6.")
     print(f"Filtered annotation shape: {df_filtered.shape}")
     print(f"Unique SampleIds: {df_filtered['SampleId'].nunique()}")
     print(f"Unique Patient_ID: {df_filtered['Patient_ID'].nunique()}")
@@ -280,12 +280,3 @@ def remove_high_correlation_features(
     )
 
     cols_to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
-
-    df_reduced = df_features.drop(columns=cols_to_drop).copy()
-
-    print("High-correlation removal completed.")
-    print(f"Original feature shape: {df_features.shape}")
-    print(f"Reduced feature shape: {df_reduced.shape}")
-    print(f"Removed highly correlated features: {len(cols_to_drop)}")
-
-    return df_reduced, cols_to_drop
