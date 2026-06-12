@@ -6,13 +6,13 @@ def data_audit(
     name: str ="dataset",
     missing_threshold: float=0.4
     ) -> dict:
-    """Generic pre-cleaning audit
+    """Generic pre-preprocessing audit
 
     Analyzes structure, duplicates, missing values, numeric outliers,
     and categorical consistency.
     
     PURPOSE:
-    - Understand data quality BEFORE any cleaning or feature engineering
+    - Understand data quality BEFORE any preprocessing or feature engineering
     - Works on individual tables (clinical_scores, steroids, meds)
     - Does NOT assume ML-ready structure
     
