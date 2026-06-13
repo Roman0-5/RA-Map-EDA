@@ -39,7 +39,7 @@ def fix_dtypes(df: pd.DataFrame, contract: dict) -> pd.DataFrame:
     """ Standardizes missing values and converts columns to appropriate dtypes based on the data contract."""
     df = df.copy()
     # 1. Standardize missing values
-    missing_values = ["NA", "N/A", "ND","Missing", "missing","null", "None","N","", " "]
+    missing_values = ["NA", "N/A", "ND","Missing", "missing","null", "None","", " "]
     df = df.replace(missing_values, np.nan)
     # 2. Convert numeric columns
     numeric_cols = []
@@ -184,7 +184,7 @@ def filter_ra_cohort(df: pd.DataFrame, study_col: str = "Study", ra_value: str =
         print("===========================\n")
     return df_filtered
 
-# Patient-level clinical cleaning
+# Patient-level clinical preprocessing
 def clean_patient_level_data(df: pd.DataFrame, contract: dict) -> pd.DataFrame:
     """Full contract-driven clinical preprocessing pipeline."""
     df = df.copy()
@@ -301,8 +301,9 @@ def clean_raw_artifacts(df, contract):
         "-99", "-99.0"
     ], np.nan)
     # 2. datetime cleanup
-    for col in contract.get("datetime_columns", []):
+    for col in contract.get("datetime_columns", []):#
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors="coerce")
             df[col] = df[col].replace(pd.Timestamp("1900-01-01"), pd.NaT)
     return df
+

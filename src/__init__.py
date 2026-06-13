@@ -1,9 +1,9 @@
-"""RA-MAP project: data loading, cleaning, and reporting utilities. 
+"""RA-MAP project: data loading, preprocessing, and reporting utilities.
 ! refer to README.md where data is from
 Modules:
     load_data
     check_data
-    cleaning
+    preprocessing
     clinical_data_audit
     extraction
     load_data

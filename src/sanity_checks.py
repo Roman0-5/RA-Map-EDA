@@ -64,7 +64,7 @@ def check_unique_patients(df):
     print("Unique Digest:", df["Digest"].nunique())
 
 def sanity_check_clinical(df: pd.DataFrame, contract: dict):
-    """Sanity check for patient-level clinical dataset after cleaning."""
+    """Sanity check for patient-level clinical dataset after preprocessing."""
     print("\n===== SHAPE =====")
     print(df.shape)
     print("\n===== MISSINGNESS (TOP 10) =====")
