@@ -357,14 +357,21 @@ def run_kmeans_clustering(
 # ============================================================================
 
 if __name__ == "__main__":
-    OUTPUT = "../reports/clustering"
-
+    OUTPUT = "reports/clustering"
+    """
     DATASETS = [
         ("expression_bl", "../../mid_processing_datasets/expression_matrix_baseline.parquet"),
         ("protogen_bl",   "../mid_processing_datasets/protogen_merged_bl.parquet"),
         ("multiomics_bl", "../mid_processing_datasets/multiomics_bl.parquet"),
         ("clinical", "../mid_processing_datasets/clinical_merged.parquet")
-]
+    ]
+    """
+
+    DATASETS = [
+        ("ml_variance", "datasets_final/ml_ready/ml_variance.csv"),
+        ("ml_correlation", "datasets_final/ml_ready/ml_correlation.csv"),
+        ("ml_literature", "datasets_final/ml_ready/ml_literature.csv"),
+    ]
 
     N_PCA   = 50
     N_UMAP  = 10
@@ -376,7 +383,10 @@ if __name__ == "__main__":
         if not os.path.exists(path):
             print(f"[SKIP] {name} — file not found: {path}")
             continue
-        df = pd.read_parquet(path)
+        if path.endswith(".csv"):
+            df = pd.read_csv(path)
+        else:
+            df = pd.read_parquet(path)
         run_kmeans_clustering(
             df                = df,
             name              = name,
