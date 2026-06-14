@@ -589,6 +589,8 @@ def log_normalise(df, method="log1p"):
     print("Log normalisation complete")
     print("Shape:", df_log.shape)
 
+    return df_log
+
 
 #---------------------------#
 #STANDARDISE data
