@@ -237,6 +237,68 @@ def save_cluster_labels(
         print(f"    Cluster {cluster}: {count} patients "
               f"({count/len(df_out)*100:.1f}%)")
 
+# ============================================================================
+# PCA cluster visualisation
+# ============================================================================
+
+def plot_clusters_pca_projection(
+    df: pd.DataFrame,
+    labels: np.ndarray,
+    output_dir: str,
+    name: str,
+    random_state: int = 42,
+) -> None:
+    """
+    Create a 2D PCA projection plot of the clustered patients.
+
+    Note:
+    - This is for visualisation only.
+    - Your clustering can still be based on PCA + UMAP.
+    - The plot shows the patients projected into 2 PCA dimensions.
+    """
+    # keep only numeric feature columns
+    X = df.select_dtypes(include=[np.number]).copy()
+    X = X.fillna(X.median())
+
+    # scale again for PCA projection plot
+    X_scaled = StandardScaler().fit_transform(X)
+
+    # 2D PCA for plotting
+    pca_2d = PCA(n_components=2, random_state=random_state)
+    X_pca_2d = pca_2d.fit_transform(X_scaled)
+
+    explained = pca_2d.explained_variance_ratio_ * 100
+
+    # plot
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    unique_labels = sorted(np.unique(labels))
+    cmap = plt.cm.get_cmap("tab10", len(unique_labels))
+
+    for i, cluster in enumerate(unique_labels):
+        mask = labels == cluster
+        ax.scatter(
+            X_pca_2d[mask, 0],
+            X_pca_2d[mask, 1],
+            s=45,
+            alpha=0.8,
+            color=cmap(i),
+            label=f"{cluster + 1}"
+        )
+
+    ax.set_title(f"Patient clustering ({name}, PCA projection)")
+    ax.set_xlabel(f"PC1 ({explained[0]:.1f}% variance)")
+    ax.set_ylabel(f"PC2 ({explained[1]:.1f}% variance)")
+    ax.legend(title="Cluster")
+    ax.grid(alpha=0.3)
+
+    plt.tight_layout()
+
+    path = os.path.join(output_dir, f"{name}_cluster_pca_projection.svg")
+    plt.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close()
+
+    print(f"  Saved: {path}")
 
 # ============================================================================
 # Main wrapper
@@ -342,6 +404,15 @@ def run_kmeans_clustering(
         'random_state':       random_state,
     }
     save_cluster_labels(patient_ids, final_labels, output_dir, name, metadata)
+
+    print("\n[5] Saving PCA projection plot ...")
+    plot_clusters_pca_projection(
+        df=df,
+        labels=final_labels,
+        output_dir=output_dir,
+        name=name,
+        random_state=random_state,
+    )
 
     result = pd.DataFrame({
         'Patient_ID': patient_ids.reset_index(drop=True),
