@@ -20,6 +20,8 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import calinski_harabasz_score
+from sklearn.metrics import davies_bouldin_score
 from umap import UMAP
 
 
@@ -102,8 +104,8 @@ def find_optimal_k(
     output_dir: str,
     name: str,
     random_state: int = 42,
-) -> tuple[int, dict[int, float]]:
-    """Evaluate K-Means for each k in k_range using Silhouette Score.
+) -> tuple[int, dict[int, dict[str, float]]]:
+    """Evaluate K-Means for each k in k_range using multiple clustering metrics.
 
     Higher silhouette score = better-separated clusters.
     Score range: [-1, 1].  Values above 0.5 indicate good structure.
@@ -118,29 +120,51 @@ def find_optimal_k(
     Returns:
         Tuple (best_k, scores) where scores is {k: silhouette_score}.
     """
-    scores: dict[int, float] = {}
+    scores: dict[int, dict[str, float]] = {}
 
     for k in k_range:
         if k >= X.shape[0]:
             print(f"  k={k} skipped (>= n_samples)")
             continue
+
         km = KMeans(n_clusters=k, random_state=random_state, n_init=10)
         labels = km.fit_predict(X)
-        # Silhouette requires at least 2 distinct labels
+
         if len(set(labels)) < 2:
             print(f"  k={k} skipped (only 1 cluster found)")
             continue
-        scores[k] = silhouette_score(X, labels)
-        print(f"  k={k}  silhouette={scores[k]:.4f}")
 
-    best_k = max(scores, key=scores.__getitem__)
-    print(f"  Best k: {best_k}  (silhouette={scores[best_k]:.4f})")
+        sil = silhouette_score(X, labels)
+        ch = calinski_harabasz_score(X, labels)
+        db = davies_bouldin_score(X, labels)
+        inertia = km.inertia_
+
+        scores[k] = {
+            "silhouette": sil,
+            "calinski_harabasz": ch,
+            "davies_bouldin": db,
+            "inertia": inertia,
+        }
+
+        print(
+            f"  k={k}  "
+            f"silhouette={sil:.4f}  "
+            f"calinski_harabasz={ch:.4f}  "
+            f"davies_bouldin={db:.4f}  "
+            f"inertia={inertia:.4f}"
+        )
+
+    best_k = max(scores, key=lambda k: scores[k]["silhouette"])
+    print(
+        f"  Best k: {best_k}  "
+        f"(silhouette={scores[best_k]['silhouette']:.4f})"
+    )
 
     # Plot
     os.makedirs(output_dir, exist_ok=True)
     fig, ax = plt.subplots(figsize=(8, 4))
     ks = sorted(scores)
-    vals = [scores[k] for k in ks]
+    vals = [scores[k]["silhouette"] for k in ks]
     ax.plot(ks, vals, 'o-', color='steelblue', linewidth=2, markersize=6)
     ax.axvline(best_k, color='tomato', linestyle='--', alpha=0.7,
                label=f'Best k={best_k}')
@@ -271,7 +295,7 @@ def run_kmeans_clustering(
 
     # 2. Find optimal k
     print("\n[2] Selecting optimal k ...")
-    best_k, silhouette_scores = find_optimal_k(
+    best_k, k_scores = find_optimal_k(
         X_umap, k_range, output_dir, name, random_state
     )
 
@@ -281,6 +305,14 @@ def run_kmeans_clustering(
     final_labels = km_final.fit_predict(X_umap)
     final_sil = silhouette_score(X_umap, final_labels)
     print(f"  Final silhouette score: {final_sil:.4f}")
+
+    final_ch = calinski_harabasz_score(X_umap, final_labels)
+    final_db = davies_bouldin_score(X_umap, final_labels)
+    final_inertia = km_final.inertia_
+
+    print(f"  Final Calinski-Harabasz score: {final_ch:.4f}")
+    print(f"  Final Davies-Bouldin score: {final_db:.4f}")
+    print(f"  Final inertia: {final_inertia:.4f}")
 
     # 4. Save outputs
     print("\n[4] Saving outputs ...")
@@ -292,9 +324,21 @@ def run_kmeans_clustering(
         'umap_metric':        metric,
         'k_range':            list(k_range),
         'best_k':             best_k,
-        'silhouette_scores':  {str(k): round(v, 4)
-                               for k, v in silhouette_scores.items()},
+        #'silhouette_scores':  {str(k): round(v, 4)
+        #                      for k, v in silhouette_scores.items()},
+        'k_scores': {
+            str(k): {
+                'silhouette': round(v['silhouette'], 4),
+                'calinski_harabasz': round(v['calinski_harabasz'], 4),
+                'davies_bouldin': round(v['davies_bouldin'], 4),
+                'inertia': round(v['inertia'], 4),
+            }
+            for k, v in k_scores.items()
+        },
         'final_silhouette':   round(final_sil, 4),
+        'final_calinski_harabasz': round(final_ch, 4),
+        'final_davies_bouldin': round(final_db, 4),
+        'final_inertia': round(final_inertia, 4),
         'random_state':       random_state,
     }
     save_cluster_labels(patient_ids, final_labels, output_dir, name, metadata)
@@ -313,14 +357,21 @@ def run_kmeans_clustering(
 # ============================================================================
 
 if __name__ == "__main__":
-    OUTPUT = "../reports/clustering"
-
+    OUTPUT = "reports/clustering"
+    """
     DATASETS = [
         ("expression_bl", "../../mid_processing_datasets/expression_matrix_baseline.parquet"),
         ("protogen_bl",   "../mid_processing_datasets/protogen_merged_bl.parquet"),
         ("multiomics_bl", "../mid_processing_datasets/multiomics_bl.parquet"),
         ("clinical", "../mid_processing_datasets/clinical_merged.parquet")
-]
+    ]
+    """
+
+    DATASETS = [
+        ("ml_variance", "datasets_final/ml_ready/ml_variance.csv"),
+        ("ml_correlation", "datasets_final/ml_ready/ml_correlation.csv"),
+        ("ml_literature", "datasets_final/ml_ready/ml_literature.csv"),
+    ]
 
     N_PCA   = 50
     N_UMAP  = 10
@@ -332,7 +383,10 @@ if __name__ == "__main__":
         if not os.path.exists(path):
             print(f"[SKIP] {name} — file not found: {path}")
             continue
-        df = pd.read_parquet(path)
+        if path.endswith(".csv"):
+            df = pd.read_csv(path)
+        else:
+            df = pd.read_parquet(path)
         run_kmeans_clustering(
             df                = df,
             name              = name,
