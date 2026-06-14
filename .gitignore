@@ -23,7 +23,6 @@ desktop.ini
 datasets/
 mid_processing_datasets/*
 #files created during runtime
-reports/
 
 # pyproject. toml generated files
 *.egg-info/

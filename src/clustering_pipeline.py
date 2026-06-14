@@ -358,14 +358,6 @@ def run_kmeans_clustering(
 
 if __name__ == "__main__":
     OUTPUT = "reports/clustering"
-    """
-    DATASETS = [
-        ("expression_bl", "../../mid_processing_datasets/expression_matrix_baseline.parquet"),
-        ("protogen_bl",   "../mid_processing_datasets/protogen_merged_bl.parquet"),
-        ("multiomics_bl", "../mid_processing_datasets/multiomics_bl.parquet"),
-        ("clinical", "../mid_processing_datasets/clinical_merged.parquet")
-    ]
-    """
 
     DATASETS = [
         ("ml_variance", "datasets_final/ml_ready/ml_variance.csv"),
