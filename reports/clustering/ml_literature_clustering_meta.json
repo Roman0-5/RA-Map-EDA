@@ -1,0 +1,52 @@
+{
+  "dataset": "ml_literature",
+  "n_samples": 265,
+  "n_pca_components": 50,
+  "n_umap_components": 10,
+  "umap_metric": "cosine",
+  "k_range": [
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "best_k": 3,
+  "k_scores": {
+    "2": {
+      "silhouette": 0.4713,
+      "calinski_harabasz": 311.9361,
+      "davies_bouldin": 0.843,
+      "inertia": 474.0728
+    },
+    "3": {
+      "silhouette": 0.4728,
+      "calinski_harabasz": 334.7773,
+      "davies_bouldin": 0.7824,
+      "inertia": 291.4754
+    },
+    "4": {
+      "silhouette": 0.4238,
+      "calinski_harabasz": 303.1314,
+      "davies_bouldin": 0.9472,
+      "inertia": 231.1093
+    },
+    "5": {
+      "silhouette": 0.3741,
+      "calinski_harabasz": 290.2229,
+      "davies_bouldin": 1.0639,
+      "inertia": 189.6362
+    },
+    "6": {
+      "silhouette": 0.3749,
+      "calinski_harabasz": 265.9218,
+      "davies_bouldin": 1.0068,
+      "inertia": 168.963
+    }
+  },
+  "final_silhouette": 0.4728,
+  "final_calinski_harabasz": 334.7773,
+  "final_davies_bouldin": 0.7824,
+  "final_inertia": 291.4754,
+  "random_state": 42
+}

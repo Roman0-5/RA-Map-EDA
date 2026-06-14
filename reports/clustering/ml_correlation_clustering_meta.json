@@ -1,0 +1,52 @@
+{
+  "dataset": "ml_correlation",
+  "n_samples": 265,
+  "n_pca_components": 50,
+  "n_umap_components": 10,
+  "umap_metric": "cosine",
+  "k_range": [
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "best_k": 2,
+  "k_scores": {
+    "2": {
+      "silhouette": 0.6106,
+      "calinski_harabasz": 670.6956,
+      "davies_bouldin": 0.583,
+      "inertia": 487.3599
+    },
+    "3": {
+      "silhouette": 0.571,
+      "calinski_harabasz": 647.731,
+      "davies_bouldin": 0.6143,
+      "inertia": 291.0604
+    },
+    "4": {
+      "silhouette": 0.4889,
+      "calinski_harabasz": 654.4696,
+      "davies_bouldin": 0.8082,
+      "inertia": 203.0137
+    },
+    "5": {
+      "silhouette": 0.4548,
+      "calinski_harabasz": 572.7547,
+      "davies_bouldin": 0.8697,
+      "inertia": 176.3433
+    },
+    "6": {
+      "silhouette": 0.38,
+      "calinski_harabasz": 530.901,
+      "davies_bouldin": 1.0953,
+      "inertia": 153.8096
+    }
+  },
+  "final_silhouette": 0.6106,
+  "final_calinski_harabasz": 670.6956,
+  "final_davies_bouldin": 0.583,
+  "final_inertia": 487.3599,
+  "random_state": 42
+}
