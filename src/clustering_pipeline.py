@@ -7,6 +7,7 @@ Pipeline per dataset:
         → UMAP(n_umap_components)        non-linear feature reduction
         → Silhouette-based k selection   k = 2..k_max
         → K-Means(best_k)
+        → Cluster labels saved as .csv
 """
 
 import json
@@ -167,21 +168,48 @@ def find_optimal_k(
         f"(silhouette={scores[best_k]['silhouette']:.4f})"
     )
 
-    # Plot
+    # Plot: 2x2 panel of all four metrics across k.
+    # Each panel marks its own optimal k. Note the directions:
+    #   silhouette / calinski_harabasz -> HIGHER is better
+    #   davies_bouldin / inertia       -> LOWER  is better (inertia = elbow)
     os.makedirs(output_dir, exist_ok=True)
-    fig, ax = plt.subplots(figsize=(8, 4))
     ks = sorted(scores)
-    vals = [scores[k]["silhouette"] for k in ks]
-    ax.plot(ks, vals, 'o-', color='steelblue', linewidth=2, markersize=6)
-    ax.axvline(best_k, color='tomato', linestyle='--', alpha=0.7,
-               label=f'Best k={best_k}')
-    ax.set_xlabel('Number of clusters (k)')
-    ax.set_ylabel('Silhouette Score')
-    ax.set_title(f'{name}: Silhouette Score per k')
-    ax.legend()
-    ax.grid(alpha=0.3)
-    plt.tight_layout()
-    path = os.path.join(output_dir, f'{file_prefix or name}_silhouette.svg')
+
+    panels = [
+        ("silhouette",        "Silhouette Score",  "higher = better", max),
+        ("calinski_harabasz", "Calinski-Harabasz", "higher = better", max),
+        ("davies_bouldin",    "Davies-Bouldin",    "lower = better",  min),
+        ("inertia",           "Inertia (Elbow)",   "elbow: read the bend", None),
+    ]
+
+    fig, axes = plt.subplots(2, 2, figsize=(11, 7.5))
+    for ax, (key, label, direction, opt) in zip(axes.ravel(), panels):
+        vals = [scores[k][key] for k in ks]
+        ax.plot(ks, vals, 'o-', color='steelblue', linewidth=2, markersize=6)
+
+        if opt is None:
+            # Inertia always falls with k -> its minimum is meaningless for
+            # picking k. Mark the silhouette-selected k as reference instead.
+            ax.axvline(best_k, color='tomato', linestyle='--', alpha=0.7,
+                       label=f'selected k={best_k}')
+        else:
+            # Mark the optimum of THIS metric (not necessarily best_k).
+            opt_k = opt(ks, key=lambda k: scores[k][key])
+            ax.axvline(opt_k, color='tomato', linestyle='--', alpha=0.7,
+                       label=f'optimal k={opt_k}')
+
+        ax.set_xlabel('Number of clusters (k)')
+        ax.set_ylabel(label)
+        ax.set_title(f'{label}  ({direction})', fontsize=11)
+        ax.set_xticks(ks)
+        ax.legend(fontsize=9)
+        ax.grid(alpha=0.3)
+
+    fig.suptitle(f'{name}: cluster metrics per k   '
+                 f'(silhouette-selected best k = {best_k})',
+                 fontsize=13, fontweight='bold')
+    plt.tight_layout(rect=(0, 0, 1, 0.96))
+    path = os.path.join(output_dir, f'{file_prefix or name}_k_diagnostics.svg')
     plt.savefig(path, dpi=100, bbox_inches='tight')
     plt.close()
     print(f"  Saved: {path}")
@@ -200,18 +228,19 @@ def save_cluster_labels(
     name: str,
     metadata: dict,
 ) -> None:
-    """Save cluster assignments as .txt (TSV)
+    """Save cluster assignments as .csv, plus a metadata sidecar as .json.
 
     Files created::
 
-        {output_dir}/{name}_cluster_labels.txt
+        {output_dir}/{name}_cluster_labels.csv
+        {output_dir}/{name}_clustering_meta.json
 
     Args:
         patient_ids: Series of Patient_ID strings.
         labels:      Cluster label per sample (0-indexed).
         output_dir:  Save directory (created if missing).
         name:        Dataset name used as filename prefix.
-        metadata:    Dict of run parameters
+        metadata:    Dict of run parameters stored in the JSON sidecar.
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -220,10 +249,10 @@ def save_cluster_labels(
         'Cluster':    labels + 1,   # 1-indexed for readability
     })
 
-    # .txt — tab-separated, human-readable
-    txt_path = os.path.join(output_dir, f'{name}_cluster_labels.txt')
-    df_out.to_csv(txt_path, sep='\t', index=False)
-    print(f"  Saved: {txt_path}")
+    # .csv — comma-separated labels
+    csv_path = os.path.join(output_dir, f'{name}_cluster_labels.csv')
+    df_out.to_csv(csv_path, index=False)
+    print(f"  Saved: {csv_path}")
 
     # Metadata sidecar as JSON
     meta_path = os.path.join(output_dir, f'{name}_clustering_meta.json')
@@ -240,7 +269,7 @@ def save_cluster_labels(
 
 
 # ============================================================================
-# Run naming  (parameters + datetime encoded into filenames)
+# Run naming  (parameters encoded into filenames; datetime is in the folder)
 # ============================================================================
 
 def build_run_name(
@@ -251,17 +280,16 @@ def build_run_name(
     min_dist: float,
     metric: str,
     best_k: int | None = None,
-    timestamp: str | None = None,
 ) -> str:
-    """Build a unique, self-describing run name from the parameters.
+    """Build a self-describing run name from the parameters.
 
     Example::
 
-        ml_correlation_pca50_umap10_nn30_md0.0_cos_k3_20260614-143207
+        ml_correlation_pca50_umap10_nn30_md0.0_cos_k3
 
-    The name encodes every parameter that changes the result, plus a
-    datetime stamp, so parallel runs never overwrite each other and any
-    output file can be traced back to its exact configuration.
+    The name encodes every parameter that changes the result. The datetime
+    is NOT part of the name — it lives in the parent run folder created by
+    ``run_parameter_sweep`` (e.g. ``ml_correlation_20260614-143207/``).
 
     Args:
         dataset:     Base dataset name (e.g. "ml_correlation").
@@ -271,14 +299,10 @@ def build_run_name(
         min_dist:    UMAP min_dist.
         metric:      UMAP distance metric.
         best_k:      Chosen k (appended only once known).
-        timestamp:   Pre-computed stamp; generated if None.
 
     Returns:
         A filesystem-safe run name string.
     """
-    if timestamp is None:
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-
     metric_short = {
         "cosine": "cos",
         "euclidean": "euc",
@@ -296,7 +320,6 @@ def build_run_name(
     ]
     if best_k is not None:
         parts.append(f"k{best_k}")
-    parts.append(timestamp)
     return "_".join(parts)
 
 
@@ -340,7 +363,7 @@ def run_kmeans_clustering(
         DataFrame with columns Patient_ID and Cluster (1-indexed), or
         a (DataFrame, metadata) tuple when ``return_meta`` is True.
     """
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")  # provenance only (meta.json)
 
     print(f"\n{'='*70}")
     print(f"CLUSTERING: {name.upper()}  "
@@ -349,10 +372,10 @@ def run_kmeans_clustering(
     print(f"{'='*70}")
 
     # Run name WITHOUT k (k is only known after selection) — used for the
-    # silhouette plot, which spans all k values.
+    # k-diagnostics plot, which spans all k values.
     pre_tag = build_run_name(
         name, n_pca_components, n_umap_components,
-        n_neighbors, min_dist, metric, best_k=None, timestamp=timestamp,
+        n_neighbors, min_dist, metric, best_k=None,
     )
 
     # 1. Feature preparation
@@ -372,7 +395,7 @@ def run_kmeans_clustering(
     # Full run name now that best_k is known.
     run_name = build_run_name(
         name, n_pca_components, n_umap_components,
-        n_neighbors, min_dist, metric, best_k=best_k, timestamp=timestamp,
+        n_neighbors, min_dist, metric, best_k=best_k,
     )
 
     # 3. Final K-Means with best k
@@ -431,9 +454,8 @@ def run_kmeans_clustering(
         return result, metadata
     return result
 
-
 # ============================================================================
-# Parameter sweep  (many runs, one summary table)
+# Parameter sweep  (many runs, one coloured summary)
 # ============================================================================
 
 def run_parameter_sweep(
@@ -444,11 +466,10 @@ def run_parameter_sweep(
     k_range: range | list[int] = range(2, 7),
     random_state: int = 42,
 ) -> pd.DataFrame:
-    """Run the clustering pipeline over every combination in a parameter grid.
+    """Run the pipeline over every combination in a parameter grid.
 
-    Each combination is saved with its own parameter+datetime run name
-    (via ``run_kmeans_clustering``). In addition, one summary CSV is written
-    that contains one row per run, so all runs can be compared at a glance.
+    Each combination is saved with its own parameter+datetime run name. In
+    addition, one summary is written twice: a plain ``.csv`` (machine-readable)
 
     Args:
         df:           Input DataFrame (same df reused for every combo).
@@ -457,26 +478,12 @@ def run_parameter_sweep(
         param_grid:   Dict mapping parameter name -> list of values to try.
                       Recognised keys: n_pca_components, n_umap_components,
                       metric, n_neighbors, min_dist, random_state.
-        k_range:      K values to evaluate per run.
+                      Keys left out fall back to sensible defaults.
+        k_range:      K values evaluated per run.
         random_state: Default seed (overridden if 'random_state' is in grid).
 
     Returns:
-        Summary DataFrame (one row per run), also saved as CSV.
-
-    Example::
-
-        grid = {
-            "n_neighbors":      [5, 15, 30, 50],
-            "min_dist":         [0.0, 0.1, 0.25],
-            "metric":           ["cosine"],
-            "n_pca_components": [50],
-        }
-        summary = run_parameter_sweep(
-            df           = ml_correlation_df,
-            dataset_name = "ml_correlation",
-            output_dir   = "reports/clustering",
-            param_grid   = grid,
-        )
+        Summary DataFrame (one row per run), also saved as .csv
     """
     defaults = {
         "n_pca_components":  50,
@@ -487,12 +494,17 @@ def run_parameter_sweep(
         "random_state":      random_state,
     }
 
-    keys = list(param_grid.keys())
-    combos = [dict(zip(keys, vals)) for vals in product(*param_grid.values())]
-
+    combos = [dict(zip(param_grid, vals)) for vals in product(*param_grid.values())]
     sweep_stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+
+    # Dedicated folder per dataset+datetime; all runs of this sweep go inside.
+    #   reports/clustering/ml_variance_20260614-143207/<all run files>
+    run_dir = os.path.join(output_dir, f"{dataset_name}_{sweep_stamp}")
+    os.makedirs(run_dir, exist_ok=True)
+
     print(f"\n{'#'*70}")
     print(f"# SWEEP: {dataset_name}  ({len(combos)} runs)")
+    print(f"# Folder: {run_dir}")
     print(f"{'#'*70}")
 
     summary_rows: list[dict] = []
@@ -503,7 +515,7 @@ def run_parameter_sweep(
         _, meta = run_kmeans_clustering(
             df                = df,
             name              = dataset_name,
-            output_dir        = output_dir,
+            output_dir        = run_dir,
             n_pca_components  = params["n_pca_components"],
             n_umap_components = params["n_umap_components"],
             k_range           = k_range,
@@ -528,21 +540,19 @@ def run_parameter_sweep(
             "calinski_harabasz": meta["final_calinski_harabasz"],
             "davies_bouldin":    meta["final_davies_bouldin"],
             "inertia":           meta["final_inertia"],
-            "timestamp":         meta["timestamp"],
         })
 
     summary = pd.DataFrame(summary_rows).sort_values(
         "silhouette", ascending=False
     ).reset_index(drop=True)
 
-    os.makedirs(output_dir, exist_ok=True)
-    summary_path = os.path.join(
-        output_dir, f"{dataset_name}_sweep_summary_{sweep_stamp}.csv"
-    )
-    summary.to_csv(summary_path, index=False)
+    # Summary lives in the dated folder, so its name needs no datetime.
+    base = os.path.join(run_dir, f"{dataset_name}_sweep_summary")
+    summary.to_csv(f"{base}.csv", index=False)
+    print(f"\n  Saved: {base}.csv")
 
     print(f"\n{'#'*70}")
-    print(f"# SWEEP DONE — summary saved: {summary_path}")
+    print(f"# SWEEP DONE — folder: {run_dir}")
     print(f"{'#'*70}")
     print(summary.to_string(index=False))
 
@@ -565,14 +575,16 @@ if __name__ == "__main__":
     K_RANGE = range(2, 7)
     SEED    = 42
 
-    # Parameter grid to sweep. Every combination becomes its own run with a
-    # unique parameter+datetime filename; one summary CSV ranks them all.
+    # Parameter grid. Each combination becomes its own run (with a unique
+    # parameter+datetime filename and a 4-metric diagnostics plot); the runs
+    # Keys left out fall back to defaults. Tip: vary ONE parameter at a time.
     PARAM_GRID = {
         "n_pca_components": [50],
         "n_neighbors":      [5, 15, 30, 50],
         "min_dist":         [0.0, 0.1, 0.25],
         "metric":           ["cosine"],
-        # "random_state":   [0, 1, 2],   # uncomment to test cluster stability
+        # "n_umap_components": [5, 10, 15, 20],  # tune separately, afterwards
+        # "random_state":      [0, 1, 2],        # to test cluster stability
     }
 
     for name, path in DATASETS:
